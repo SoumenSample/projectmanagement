@@ -1,0 +1,42 @@
+[
+  {
+    "id": "current-user",
+    "name": "You",
+    "avatar": "https://notion-avatars.netlify.app/api/avatar/?preset=male-7",
+    "status": "online",
+    "email": "you@cyerspaceworks.com",
+    "lastSeen": "2026-04-25T10:00:00.000Z",
+    "role": "Admin",
+    "department": "Operations"
+  },
+  {
+    "id": "user-1",
+    "name": "Aarav Sharma",
+    "avatar": "https://notion-avatars.netlify.app/api/avatar/?preset=male-1",
+    "status": "online",
+    "email": "aarav@cyerspaceworks.com",
+    "lastSeen": "2026-04-25T09:58:00.000Z",
+    "role": "Employee",
+    "department": "Engineering"
+  },
+  {
+    "id": "user-2",
+    "name": "Maya Roy",
+    "avatar": "https://notion-avatars.netlify.app/api/avatar/?preset=female-5",
+    "status": "away",
+    "email": "maya@cyerspaceworks.com",
+    "lastSeen": "2026-04-25T09:45:00.000Z",
+    "role": "Client",
+    "department": "External"
+  },
+  {
+    "id": "user-3",
+    "name": "Dev Patel",
+    "avatar": "https://notion-avatars.netlify.app/api/avatar/?preset=male-4",
+    "status": "offline",
+    "email": "dev@cyerspaceworks.com",
+    "lastSeen": "2026-04-24T18:30:00.000Z",
+    "role": "Employee",
+    "department": "Support"
+  }
+]

@@ -1,0 +1,68 @@
+{
+  "conv-1": [
+    {
+      "id": "conv-1-msg-1",
+      "content": "Hi, I am sharing the updated copy now.",
+      "timestamp": "2026-04-25T09:40:00.000Z",
+      "senderId": "user-1",
+      "type": "text",
+      "isEdited": false,
+      "reactions": [],
+      "replyTo": null
+    },
+    {
+      "id": "conv-1-msg-2",
+      "content": "Great, please include the SEO headline too.",
+      "timestamp": "2026-04-25T09:42:00.000Z",
+      "senderId": "current-user",
+      "type": "text",
+      "isEdited": false,
+      "reactions": [],
+      "replyTo": null
+    },
+    {
+      "id": "conv-1-msg-3",
+      "content": "I have updated the landing page copy.",
+      "timestamp": "2026-04-25T09:58:00.000Z",
+      "senderId": "user-1",
+      "type": "text",
+      "isEdited": false,
+      "reactions": [],
+      "replyTo": null
+    }
+  ],
+  "conv-2": [
+    {
+      "id": "conv-2-msg-1",
+      "content": "Can we move the review to tomorrow afternoon?",
+      "timestamp": "2026-04-25T08:30:00.000Z",
+      "senderId": "user-2",
+      "type": "text",
+      "isEdited": false,
+      "reactions": [],
+      "replyTo": null
+    },
+    {
+      "id": "conv-2-msg-2",
+      "content": "Can we reschedule the review call?",
+      "timestamp": "2026-04-25T08:40:00.000Z",
+      "senderId": "user-2",
+      "type": "text",
+      "isEdited": false,
+      "reactions": [],
+      "replyTo": null
+    }
+  ],
+  "conv-3": [
+    {
+      "id": "conv-3-msg-1",
+      "content": "Deployment checklist is done.",
+      "timestamp": "2026-04-24T16:20:00.000Z",
+      "senderId": "user-3",
+      "type": "text",
+      "isEdited": false,
+      "reactions": [],
+      "replyTo": null
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "conv-1",
+    "name": "Aarav Sharma",
+    "avatar": "https://notion-avatars.netlify.app/api/avatar/?preset=male-1",
+    "type": "direct",
+    "participants": ["user-1"],
+    "isPinned": true,
+    "isMuted": false,
+    "unreadCount": 2,
+    "lastMessage": {
+      "content": "I have updated the landing page copy.",
+      "timestamp": "2026-04-25T09:58:00.000Z"
+    }
+  },
+  {
+    "id": "conv-2",
+    "name": "Maya Roy",
+    "avatar": "https://notion-avatars.netlify.app/api/avatar/?preset=female-5",
+    "type": "direct",
+    "participants": ["user-2"],
+    "isPinned": false,
+    "isMuted": false,
+    "unreadCount": 0,
+    "lastMessage": {
+      "content": "Can we reschedule the review call?",
+      "timestamp": "2026-04-25T08:40:00.000Z"
+    }
+  },
+  {
+    "id": "conv-3",
+    "name": "Project Alpha Team",
+    "avatar": "https://notion-avatars.netlify.app/api/avatar/?preset=male-9",
+    "type": "group",
+    "participants": ["user-1", "user-2", "user-3"],
+    "isPinned": false,
+    "isMuted": true,
+    "unreadCount": 5,
+    "lastMessage": {
+      "content": "Deployment checklist is done.",
+      "timestamp": "2026-04-24T16:20:00.000Z"
+    }
+  }
+]
