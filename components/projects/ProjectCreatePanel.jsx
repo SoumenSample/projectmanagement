@@ -412,7 +412,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 function createEmptyTask() {
-  return { title: "", description: "", subtasks: [""] };
+  return { _id: null, title: "", description: "", subtasks: [{ _id: null, title: "" }] };
+}
+
+function normalizeTaskSubtasks(subtasks = []) {
+  if (!Array.isArray(subtasks) || subtasks.length === 0) {
+    return [{ _id: null, title: "" }];
+  }
+
+  return subtasks.map((subtask) => ({
+    _id: subtask?._id || subtask?.id || null,
+    title: subtask?.title || "",
+  }));
 }
 
 function flattenUsers(users = [], role) {
@@ -424,6 +435,15 @@ function flattenUsers(users = [], role) {
 }
 
 function buildFormFromProject(project) {
+  const tasks = Array.isArray(project?.tasks) && project.tasks.length
+    ? project.tasks.map((task) => ({
+        _id: task?._id || task?.id || null,
+        title: task?.title || "",
+        description: task?.description || "",
+        subtasks: normalizeTaskSubtasks(task?.subtasks),
+      }))
+    : [createEmptyTask()];
+
   return {
     title: project?.title || "",
     description: project?.description || "",
@@ -432,7 +452,7 @@ function buildFormFromProject(project) {
     priority: project?.priority || "medium",
     status: project?.status || "planning",
     tags: Array.isArray(project?.tags) ? project.tags.join(", ") : "",
-    tasks: [createEmptyTask()],
+    tasks,
   };
 }
 
@@ -486,7 +506,10 @@ export default function ProjectCreatePanel({
       ...c,
       tasks: c.tasks.map((t, i) => {
         if (i !== taskIndex) return t;
-        return { ...t, subtasks: t.subtasks.map((s, si) => (si === subtaskIndex ? value : s)) };
+        return {
+          ...t,
+          subtasks: t.subtasks.map((s, si) => (si === subtaskIndex ? { ...s, title: value } : s)),
+        };
       }),
     }));
   }
@@ -510,17 +533,19 @@ export default function ProjectCreatePanel({
         priority: form.priority,
         status: form.status,
         tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
-        ...(mode === "create"
-          ? {
-              tasks: form.tasks
-                .filter((t) => t.title.trim())
-                .map((t) => ({
-                  title: t.title,
-                  description: t.description,
-                  subtasks: t.subtasks.map((s) => s.trim()).filter(Boolean).map((s) => ({ title: s })),
-                })),
-            }
-          : {}),
+        tasks: form.tasks
+          .filter((t) => t.title.trim())
+          .map((t) => ({
+            _id: t._id || undefined,
+            title: t.title.trim(),
+            description: t.description.trim(),
+            subtasks: t.subtasks
+              .map((subtask) => ({
+                _id: subtask._id || undefined,
+                title: subtask.title.trim(),
+              }))
+              .filter((subtask) => subtask.title),
+          })),
       };
 
       const response = await fetch(
@@ -990,7 +1015,7 @@ export default function ProjectCreatePanel({
                         {task.subtasks.map((subtask, subtaskIndex) => (
                           <div key={subtaskIndex} className="flex items-center gap-2">
                             <input
-                              value={subtask}
+                              value={subtask.title || ""}
                               onChange={(e) => updateSubtask(taskIndex, subtaskIndex, e.target.value)}
                               placeholder={`Subtask ${subtaskIndex + 1}`}
                               className="pcf-input flex-1"

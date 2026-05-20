@@ -107,7 +107,6 @@ export function NavMain({ items }) {
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild
-                tooltip={item.title}
                 className={cn(
                   "hover:ring-1 hover:ring-border/70 hover:ring-inset",
                   pathname === item.url

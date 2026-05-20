@@ -8,6 +8,22 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth-options"
 import notificationService from "@/lib/notifications/notification-service"
 
+function parseJsonField(value, fallback) {
+  if (value === null || value === undefined || value === "") {
+    return fallback
+  }
+
+  if (Array.isArray(value) || typeof value === "object") {
+    return value
+  }
+
+  try {
+    return JSON.parse(String(value))
+  } catch {
+    return fallback
+  }
+}
+
 async function connectDB() {
   try {
     await connectToDatabase()
@@ -77,6 +93,27 @@ export async function POST(req) {
     const description = formData.get("description")
     const recipientUserId = formData.get("recipientUserId")
     const fileUrl = formData.get("fileUrl")
+    const date = formData.get("date")
+    const organizationName = formData.get("organizationName")
+    const organizationDetails = formData.get("organizationDetails")
+    const projectDuration = formData.get("projectDuration")
+    const requiredDetails = formData.get("requiredDetails")
+    const projectAssetsTechStack = formData.get("projectAssetsTechStack")
+    const termsAndConditions = formData.get("termsAndConditions")
+    const contractDetails = formData.get("contractDetails")
+    const thankYouNote = formData.get("thankYouNote")
+    const subtotal = formData.get("subtotal")
+    const discount = formData.get("discount")
+    const total = formData.get("total")
+    const businessName = formData.get("businessName")
+    const businessLogoUrl = formData.get("businessLogoUrl")
+    const businessEmail = formData.get("businessEmail")
+    const businessPhone = formData.get("businessPhone")
+    const businessWebsite = formData.get("businessWebsite")
+    const businessAddress = formData.get("businessAddress")
+    const whyChooseUs = parseJsonField(formData.get("whyChooseUs"), [])
+    const costBreakdown = parseJsonField(formData.get("costBreakdown"), [])
+    const addOns = parseJsonField(formData.get("addOns"), [])
 
     if (!title || String(title).trim() === "") {
       return NextResponse.json({ error: "Title is required" }, { status: 400 })
@@ -96,6 +133,27 @@ export async function POST(req) {
       title,
       description,
       fileUrl: fileUrl || "",
+      date: date || "",
+      organizationName: organizationName || "",
+      organizationDetails: organizationDetails || "",
+      projectDuration: projectDuration || "",
+      requiredDetails: requiredDetails || "",
+      projectAssetsTechStack: projectAssetsTechStack || "",
+      termsAndConditions: termsAndConditions || "",
+      contractDetails: contractDetails || "",
+      thankYouNote: thankYouNote || "",
+      subtotal: subtotal || "",
+      discount: discount || "",
+      total: total || "",
+      businessName: businessName || "",
+      businessLogoUrl: businessLogoUrl || "",
+      businessEmail: businessEmail || "",
+      businessPhone: businessPhone || "",
+      businessWebsite: businessWebsite || "",
+      businessAddress: businessAddress || "",
+      whyChooseUs,
+      costBreakdown,
+      addOns,
       recipientUserId,
     })
 

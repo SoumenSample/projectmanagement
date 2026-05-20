@@ -441,7 +441,7 @@ export default function ProjectManagementWorkspace({ role, sessionUserId, users 
             sessionUserId={sessionUserId}
             initialProject={editingProject}
             mode="edit"
-            showTaskOutline={false}
+            showTaskOutline={true}
             onSaved={handleProjectSaved}
             onCancel={() => { setIsEditOpen(false); setEditingProject(null); }}
           />

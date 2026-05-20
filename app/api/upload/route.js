@@ -19,23 +19,66 @@ export async function POST(req) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const data = await req.formData();
-    const file = data.get("file");
+    const contentType = String(req.headers.get("content-type") || "").toLowerCase();
+    const reqClone = req.clone();
 
-    if (!file || typeof file.arrayBuffer !== "function") {
-      return Response.json({ error: "No file received" }, { status: 400 });
+    let buffer;
+    let sourceName = "document";
+    let sourceType = "";
+
+    if (contentType.includes("multipart/form-data")) {
+      try {
+        const data = await req.formData();
+        const file = data.get("file");
+
+        if (!file || typeof file.arrayBuffer !== "function") {
+          return Response.json({ error: "No file received" }, { status: 400 });
+        }
+
+        const bytes = await file.arrayBuffer();
+        buffer = Buffer.from(bytes);
+        sourceName = String(file.name || "document");
+        sourceType = String(file.type || "");
+      } catch {
+        // Some environments intermittently fail multipart parsing.
+        // Fall back to raw body parsing using the cloned request stream.
+        const raw = await reqClone.arrayBuffer();
+        if (!raw || raw.byteLength === 0) {
+          return Response.json({ error: "No file received" }, { status: 400 });
+        }
+
+        buffer = Buffer.from(raw);
+        sourceName = decodeURIComponent(String(req.headers.get("x-file-name") || "document.pdf"));
+        sourceType = String(req.headers.get("x-file-type") || "application/pdf").toLowerCase();
+      }
+    } else {
+      const raw = await req.arrayBuffer();
+      if (!raw || raw.byteLength === 0) {
+        return Response.json({ error: "No file received" }, { status: 400 });
+      }
+
+      buffer = Buffer.from(raw);
+      sourceName = decodeURIComponent(String(req.headers.get("x-file-name") || "document.pdf"));
+      sourceType = contentType.split(";")[0].trim();
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    const sanitizedName = String(file.name || "document")
+    const sanitizedName = String(sourceName || "document")
       .trim()
       .replace(/[^a-zA-Z0-9._-]+/g, "-");
     const baseName = sanitizedName.replace(/\.[^.]+$/, "");
-    const isPdf = String(file.type || "").toLowerCase() === "application/pdf" || sanitizedName.toLowerCase().endsWith(".pdf");
+    const isPdf = String(sourceType || "").toLowerCase() === "application/pdf" || sanitizedName.toLowerCase().endsWith(".pdf");
+
+    if (isPdf) {
+      const header = buffer.subarray(0, 5).toString("utf8");
+      if (header !== "%PDF-") {
+        return Response.json({ error: "Invalid PDF payload received" }, { status: 400 });
+      }
+    }
+
     const resourceType = isPdf ? "raw" : "image";
-    const publicId = `uploads/${Date.now()}_${baseName || "document"}`;
+    const publicId = isPdf
+      ? `uploads/${Date.now()}_${baseName || "document"}.pdf`
+      : `uploads/${Date.now()}_${baseName || "document"}`;
 
     const result = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(

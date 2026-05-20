@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import QuotationForm from "@/components/quotationForm"
 
 // ─── Download the actual uploaded file, converting to PDF via Cloudinary if needed ─
@@ -9,14 +10,18 @@ function getDownloadUrl(q: any): string | null {
   if (!q.fileUrl) return null
 
   const url: string = q.fileUrl
+  const normalizedUrl = url.toLowerCase()
 
   // Already a PDF — return as-is
-  if (url.includes(".pdf") || url.includes("f_pdf")) return url
+  if (normalizedUrl.includes(".pdf") || normalizedUrl.includes("f_pdf")) return url
+
+  // Raw uploads (including PDF files) should not be transformed through image pipeline
+  if (normalizedUrl.includes("/raw/upload/")) return url
 
   // Cloudinary URL — inject fl_attachment,f_pdf transformation to force PDF download
   // e.g. https://res.cloudinary.com/demo/image/upload/v123/file.docx
   //   → https://res.cloudinary.com/demo/image/upload/fl_attachment,f_pdf/v123/file.docx
-  if (url.includes("cloudinary.com")) {
+  if (normalizedUrl.includes("cloudinary.com") && normalizedUrl.includes("/image/upload/")) {
     // Insert transformation after /upload/
     return url.replace("/upload/", "/upload/fl_attachment,f_pdf/")
   }
@@ -27,6 +32,7 @@ function getDownloadUrl(q: any): string | null {
 
 async function handleDownloadPDF(q: any, setDownloading: (id: string | null) => void) {
   const downloadUrl = getDownloadUrl(q)
+  const apiDownloadUrl = `/api/quotations/${q._id}`
 
   if (!downloadUrl) {
     alert("No file attached to this quotation.")
@@ -36,25 +42,16 @@ async function handleDownloadPDF(q: any, setDownloading: (id: string | null) => 
   setDownloading(q._id)
 
   try {
-    const response = await fetch(downloadUrl)
-    if (!response.ok) throw new Error("Failed to fetch file")
-
-    const blob = await response.blob()
-
-    // Force the filename to end in .pdf
-    const filename = `Quotation-${(q.title || "document").replace(/\s+/g, "-")}.pdf`
-
-    const objectUrl = URL.createObjectURL(blob)
     const link = document.createElement("a")
-    link.href = objectUrl
-    link.download = filename
+    link.href = apiDownloadUrl
+    link.target = "_blank"
+    link.rel = "noopener noreferrer"
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    URL.revokeObjectURL(objectUrl)
   } catch (err) {
     console.error("Download failed:", err)
-    // Fallback: open in new tab so user can save manually
+    // Fallback: open the Cloudinary URL directly.
     window.open(downloadUrl, "_blank")
   } finally {
     setDownloading(null)
@@ -65,6 +62,8 @@ export default function QuotationPage() {
   const [data, setData] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
   const [open, setOpen] = useState(false)
+  const [chooserOpen, setChooserOpen] = useState(false)
+  const [creationMode, setCreationMode] = useState<"upload" | "template" | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingData, setEditingData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
@@ -100,6 +99,19 @@ export default function QuotationPage() {
   const handleEditClick = (q: any) => {
     setEditingId(q._id)
     setEditingData(q)
+    const hasTemplateData = Boolean(
+      q?.whyChooseUs?.length ||
+        q?.costBreakdown?.length ||
+        q?.addOns?.length ||
+        q?.organizationName ||
+        q?.organizationDetails ||
+        q?.projectDuration ||
+        q?.requiredDetails ||
+        q?.projectAssetsTechStack ||
+        q?.termsAndConditions ||
+        q?.contractDetails
+    )
+    setCreationMode(hasTemplateData ? "template" : "upload")
     setOpen(true)
   }
 
@@ -119,8 +131,27 @@ export default function QuotationPage() {
     }
   }
 
-  const handleCloseModal = () => { setOpen(false); setEditingId(null); setEditingData(null) }
+  const handleCloseModal = () => {
+    setOpen(false)
+    setChooserOpen(false)
+    setCreationMode(null)
+    setEditingId(null)
+    setEditingData(null)
+  }
   const handleSuccess = () => { handleCloseModal(); loadData() }
+
+  const handleAddQuotation = () => {
+    setEditingId(null)
+    setEditingData(null)
+    setCreationMode(null)
+    setChooserOpen(true)
+  }
+
+  const handleChooseMode = (mode: "upload" | "template") => {
+    setChooserOpen(false)
+    setCreationMode(mode)
+    setOpen(true)
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -133,10 +164,60 @@ export default function QuotationPage() {
             {data.length} quotation{data.length !== 1 ? "s" : ""} found
           </p>
         </div>
-        <Button onClick={() => { setEditingId(null); setEditingData(null); setOpen(true) }}>
+        <Button onClick={handleAddQuotation}>
           + Add Quotation
         </Button>
       </div>
+
+      <Dialog open={chooserOpen} onOpenChange={(nextOpen) => { if (!nextOpen) handleCloseModal(); else setChooserOpen(true) }}>
+        <DialogContent className="w-[min(92vw,560px)] max-w-none! rounded-3xl border border-white/10 bg-white p-0 shadow-2xl dark:bg-zinc-950">
+          <div className="border-b border-gray-200 px-6 py-5 dark:border-white/10">
+            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">Create Quotation</DialogTitle>
+            <DialogDescription className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Choose how you want to create the quotation.
+            </DialogDescription>
+          </div>
+
+          <div className="grid gap-4 p-6 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => handleChooseMode("upload")}
+              className="rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:border-gray-400 hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20 dark:hover:bg-white/10"
+            >
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-white">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Upload quotation</h3>
+              <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                Upload a prepared file and assign it to a client.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleChooseMode("template")}
+              className="rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:border-gray-400 hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20 dark:hover:bg-white/10"
+            >
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-white">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M7 8h10" />
+                  <path d="M7 12h10" />
+                  <path d="M7 16h6" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Use custom template</h3>
+              <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                Build the branded quotation template and export it as PDF.
+              </p>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Table */}
       <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm">
@@ -278,6 +359,7 @@ export default function QuotationPage() {
         quotationId={editingId}
         initialData={editingData}
         clients={clients}
+        mode={creationMode}
       />
     </div>
   )

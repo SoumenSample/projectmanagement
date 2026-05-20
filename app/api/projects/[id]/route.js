@@ -18,6 +18,18 @@ import notificationService from "@/lib/notifications/notification-service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const subtaskInputSchema = z.object({
+  _id: z.string().optional(),
+  title: z.string().min(1).max(120),
+});
+
+const taskInputSchema = z.object({
+  _id: z.string().optional(),
+  title: z.string().min(1).max(160),
+  description: z.string().max(1000).optional().default(""),
+  subtasks: z.array(subtaskInputSchema).optional().default([]),
+});
+
 const updateProjectSchema = z.object({
   title: z.string().min(2).max(160).optional(),
   description: z.string().max(5000).optional(),
@@ -27,6 +39,7 @@ const updateProjectSchema = z.object({
   deadline: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).optional(),
   status: z.enum(["planning", "in-progress", "at-risk", "completed", "paused"]).optional(),
+  tasks: z.array(taskInputSchema).optional(),
 });
 
 function parseDate(value) {
@@ -36,6 +49,43 @@ function parseDate(value) {
   if (Number.isNaN(date.getTime())) return null;
 
   return date;
+}
+
+function normalizeTasks(tasks = [], existingTasks = []) {
+  const existingTaskById = new Map(
+    (existingTasks || []).map((task) => [task?._id?.toString?.() || task?._id || task?.id || null, task])
+  );
+
+  return tasks.map((task) => {
+    const taskId = task._id || null;
+    const existingTask = taskId ? existingTaskById.get(taskId) : null;
+    const existingSubtaskById = new Map(
+      (existingTask?.subtasks || []).map((subtask) => [subtask?._id?.toString?.() || subtask?._id || subtask?.id || null, subtask])
+    );
+
+    const subtasks = (task.subtasks || []).map((subtask) => {
+      const subtaskId = subtask._id || null;
+      const existingSubtask = subtaskId ? existingSubtaskById.get(subtaskId) : null;
+
+      return {
+        _id: subtaskId || undefined,
+        title: subtask.title.trim(),
+        isDone: existingSubtask?.isDone ?? false,
+        doneBy: existingSubtask?.doneBy ?? null,
+        doneAt: existingSubtask?.doneAt ?? null,
+      };
+    });
+
+    return {
+      _id: taskId || undefined,
+      title: task.title.trim(),
+      description: task.description?.trim?.() || "",
+      isDone: existingTask?.isDone ?? false,
+      doneBy: existingTask?.doneBy ?? null,
+      doneAt: existingTask?.doneAt ?? null,
+      subtasks,
+    };
+  });
 }
 
 async function populateProject(projectId) {
@@ -222,6 +272,10 @@ export async function PATCH(request, { params }) {
 
   if (parsed.data.status) {
     project.status = parsed.data.status;
+  }
+
+  if (Array.isArray(parsed.data.tasks)) {
+    project.tasks = normalizeTasks(parsed.data.tasks, project.tasks || []);
   }
 
   const { progress } = calculateProjectProgress(project.tasks || []);

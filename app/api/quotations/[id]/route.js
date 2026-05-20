@@ -4,12 +4,61 @@ import User from "@/lib/models/User"
 import { connectToDatabase } from "@/lib/mongodb"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth-options"
+import { v2 as cloudinary } from "cloudinary"
+
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
+})
+
+function parseJsonField(value, fallback) {
+  if (value === null || value === undefined || value === "") {
+    return fallback
+  }
+
+  if (Array.isArray(value) || typeof value === "object") {
+    return value
+  }
+
+  try {
+    return JSON.parse(String(value))
+  } catch {
+    return fallback
+  }
+}
 
 function makeSafeFilename(value) {
   return String(value || "quotation")
     .trim()
     .replace(/[^a-zA-Z0-9-_]+/g, "-")
     .replace(/^-+|-+$/g, "") || "quotation"
+}
+
+function getCloudinaryDownloadUrl(fileUrl) {
+  if (!fileUrl || !fileUrl.includes("cloudinary.com")) {
+    return fileUrl
+  }
+
+  if (!fileUrl.includes("/raw/upload/")) {
+    return fileUrl
+  }
+
+  const [, rawPath] = fileUrl.split("/raw/upload/")
+  if (!rawPath) {
+    return fileUrl
+  }
+
+  const withoutVersion = rawPath.replace(/^v\d+\//, "")
+  const publicId = decodeURIComponent(withoutVersion)
+
+  return cloudinary.url(publicId, {
+    resource_type: "raw",
+    type: "upload",
+    sign_url: true,
+    secure: true,
+  })
 }
 
 async function connectDB() {
@@ -53,23 +102,8 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: "Quotation file not available" }, { status: 404 })
     }
 
-    const sourceResponse = await fetch(quotation.fileUrl)
-    if (!sourceResponse.ok) {
-      return NextResponse.json({ error: "Failed to fetch quotation file" }, { status: 502 })
-    }
-
-    const fileBuffer = await sourceResponse.arrayBuffer()
-    const filename = `${makeSafeFilename(quotation.title || "quotation")}.pdf`
-
-    return new Response(fileBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Length": String(fileBuffer.byteLength),
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "no-store",
-      },
-    })
+    const downloadUrl = getCloudinaryDownloadUrl(quotation.fileUrl)
+    return NextResponse.redirect(downloadUrl, 302)
   } catch (err) {
     console.error("🔥 GET DOWNLOAD ERROR:", err)
     return NextResponse.json({ error: err.message || "Failed to download quotation" }, { status: 500 })
@@ -97,6 +131,27 @@ export async function PUT(req, { params }) {
     const description = formData.get("description")
     const recipientUserId = formData.get("recipientUserId")
     const fileUrl = formData.get("fileUrl")
+    const date = formData.get("date")
+    const organizationName = formData.get("organizationName")
+    const organizationDetails = formData.get("organizationDetails")
+    const projectDuration = formData.get("projectDuration")
+    const requiredDetails = formData.get("requiredDetails")
+    const projectAssetsTechStack = formData.get("projectAssetsTechStack")
+    const termsAndConditions = formData.get("termsAndConditions")
+    const contractDetails = formData.get("contractDetails")
+    const thankYouNote = formData.get("thankYouNote")
+    const subtotal = formData.get("subtotal")
+    const discount = formData.get("discount")
+    const total = formData.get("total")
+    const businessName = formData.get("businessName")
+    const businessLogoUrl = formData.get("businessLogoUrl")
+    const businessEmail = formData.get("businessEmail")
+    const businessPhone = formData.get("businessPhone")
+    const businessWebsite = formData.get("businessWebsite")
+    const businessAddress = formData.get("businessAddress")
+    const whyChooseUs = parseJsonField(formData.get("whyChooseUs"), [])
+    const costBreakdown = parseJsonField(formData.get("costBreakdown"), [])
+    const addOns = parseJsonField(formData.get("addOns"), [])
 
     if (!title || String(title).trim() === "") {
       return NextResponse.json({ error: "Title is required" }, { status: 400 })
@@ -122,7 +177,33 @@ export async function PUT(req, { params }) {
 
     const updatedQuotation = await Quotation.findByIdAndUpdate(
       quotationId,
-      { title, description, fileUrl: updatedFileUrl, recipientUserId },
+      {
+        title,
+        description,
+        fileUrl: updatedFileUrl,
+        date: date || "",
+        organizationName: organizationName || "",
+        organizationDetails: organizationDetails || "",
+        projectDuration: projectDuration || "",
+        requiredDetails: requiredDetails || "",
+        projectAssetsTechStack: projectAssetsTechStack || "",
+        termsAndConditions: termsAndConditions || "",
+        contractDetails: contractDetails || "",
+        thankYouNote: thankYouNote || "",
+        subtotal: subtotal || "",
+        discount: discount || "",
+        total: total || "",
+        businessName: businessName || "",
+        businessLogoUrl: businessLogoUrl || "",
+        businessEmail: businessEmail || "",
+        businessPhone: businessPhone || "",
+        businessWebsite: businessWebsite || "",
+        businessAddress: businessAddress || "",
+        whyChooseUs,
+        costBreakdown,
+        addOns,
+        recipientUserId,
+      },
       { new: true }
     )
 

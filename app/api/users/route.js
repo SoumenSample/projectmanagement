@@ -31,6 +31,7 @@ const createUserSchema = z.object({
   validTo: z.string().optional(),
   source: z.string().optional(),
   status: z.enum(["active", "inactive"]).optional().default("active"),
+  employeeRole: z.enum(["Manager", "HR", "Customer Agent", "Staff"]).optional(),
 });
 
 // ===============================
@@ -137,6 +138,7 @@ export async function POST(request) {
       age: typeof parsed.data.age === "number" ? parsed.data.age : null,
       region: parsed.data.region?.trim() || "",
       source: parsed.data.source?.trim() || "manual-admin",
+      employeeRole: parsed.data.employeeRole || null,
     });
 
     // If client user, also create a Client profile

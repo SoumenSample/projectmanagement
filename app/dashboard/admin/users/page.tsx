@@ -93,6 +93,7 @@ export default function UsersPage() {
   const [validFrom, setValidFrom] = useState("")
   const [validTo, setValidTo] = useState("")
   const [clientStatus, setClientStatus] = useState("active")
+  const [employeeRole, setEmployeeRole] = useState("Staff")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState("")
 
@@ -157,6 +158,10 @@ export default function UsersPage() {
         return
       }
     }
+    if (role === "employee" && !employeeRole.trim()) {
+      setError("Employee role is required.")
+      return
+    }
     setIsSubmitting(true)
     setMessage("")
     setError("")
@@ -173,6 +178,9 @@ export default function UsersPage() {
         payload.source = source
         payload.status = clientStatus
       }
+      if (role === "employee") {
+        payload.employeeRole = employeeRole
+      }
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,7 +191,7 @@ export default function UsersPage() {
       setMessage("User created successfully.")
       setName(""); setEmail(""); setPassword(""); setRole("client")
       setFinalBudget(""); setProjectName(""); setProjectDescription("")
-      setPhone(""); setAge(""); setRegion(""); setValidFrom(""); setValidTo(""); setSource(""); setClientStatus("active")
+      setPhone(""); setAge(""); setRegion(""); setValidFrom(""); setValidTo(""); setSource(""); setClientStatus("active"); setEmployeeRole("Staff")
       setOpen(false)
       // Refetch users after successful creation
       const res = await fetch("/api/users", { cache: "no-store" })
@@ -521,6 +529,31 @@ export default function UsersPage() {
                         rows={3}
                         className="w-full rounded-lg border border-input bg-background/60 px-3 py-2 text-sm transition-all outline-none placeholder:text-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/20 resize-none"
                       />
+                    </FieldGroup>
+                  </div>
+                )}
+
+                {/* ── Section: Employee Details (conditional) ── */}
+                {role === "employee" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">2</span>
+                      <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Employee Details</span>
+                      <div className="flex-1 h-px bg-border/50" />
+                    </div>
+
+                    <FieldGroup label="Employee Role" icon={Briefcase}>
+                      <select
+                        className={selectCls}
+                        value={employeeRole}
+                        onChange={(e) => setEmployeeRole(e.target.value)}
+                        required
+                      >
+                        <option value="Manager">Manager</option>
+                        <option value="HR">HR</option>
+                        <option value="Customer Agent">Customer Agent</option>
+                        <option value="Staff">Staff</option>
+                      </select>
                     </FieldGroup>
                   </div>
                 )}
