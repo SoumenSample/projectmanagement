@@ -32,7 +32,6 @@ function getDownloadUrl(q: any): string | null {
 
 async function handleDownloadPDF(q: any, setDownloading: (id: string | null) => void) {
   const downloadUrl = getDownloadUrl(q)
-  const apiDownloadUrl = `/api/quotations/${q._id}`
 
   if (!downloadUrl) {
     alert("No file attached to this quotation.")
@@ -43,7 +42,7 @@ async function handleDownloadPDF(q: any, setDownloading: (id: string | null) => 
 
   try {
     const link = document.createElement("a")
-    link.href = apiDownloadUrl
+    link.href = downloadUrl
     link.target = "_blank"
     link.rel = "noopener noreferrer"
     document.body.appendChild(link)

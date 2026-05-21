@@ -1,0 +1,1298 @@
+// "use client"
+
+// import { useEffect, useMemo, useRef, useState } from "react"
+// import { toPng } from "html-to-image"
+// import { jsPDF } from "jspdf"
+// import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
+
+// const emptyCostRow = () => ({ item: "", description: "", amount: "" })
+// const emptyAddOnRow = () => ({ label: "", amount: "" })
+
+// const defaultBusiness = {
+//   businessName: "Project Management",
+//   logoUrl: "",
+//   email: "",
+//   phone: "",
+//   website: "",
+//   address: "",
+// }
+
+// const createDefaultForm = () => ({
+//   title: "",
+//   description: "",
+//   recipientUserId: "",
+//   date: new Date().toISOString().slice(0, 10),
+//   organizationName: "",
+//   organizationDetails: "",
+//   projectDuration: "",
+//   requiredDetails: "",
+//   projectAssetsTechStack: "",
+//   termsAndConditions: "",
+//   contractDetails: "",
+//   thankYouNote: "Thank you for doing business with us.",
+//   discount: "",
+// })
+
+// function parseJsonField(value: any, fallback: any) {
+//   if (value === null || value === undefined || value === "") {
+//     return fallback
+//   }
+
+//   if (Array.isArray(value) || typeof value === "object") {
+//     return value
+//   }
+
+//   try {
+//     return JSON.parse(String(value))
+//   } catch {
+//     return fallback
+//   }
+// }
+
+// function normalizeStringArray(value: any) {
+//   const parsed = parseJsonField(value, [])
+//   if (!Array.isArray(parsed)) {
+//     return [""]
+//   }
+
+//   const normalized = parsed
+//     .map((entry) => String(typeof entry === "object" && entry !== null ? entry.value ?? entry.label ?? entry.item ?? "" : entry).trim())
+//     .filter(Boolean)
+
+//   return normalized.length ? normalized : [""]
+// }
+
+// function normalizeCostRows(value: any) {
+//   const parsed = parseJsonField(value, [])
+//   if (!Array.isArray(parsed)) {
+//     return [emptyCostRow()]
+//   }
+
+//   const normalized = parsed.map((entry) => ({
+//     item: String(entry?.item ?? "").trim(),
+//     description: String(entry?.description ?? "").trim(),
+//     amount: String(entry?.amount ?? "").trim(),
+//   }))
+
+//   return normalized.length ? normalized : [emptyCostRow()]
+// }
+
+// function normalizeAddOns(value: any) {
+//   const parsed = parseJsonField(value, [])
+//   if (!Array.isArray(parsed)) {
+//     return [emptyAddOnRow()]
+//   }
+
+//   const normalized = parsed.map((entry) => ({
+//     label: String(entry?.label ?? "").trim(),
+//     amount: String(entry?.amount ?? "").trim(),
+//   }))
+
+//   return normalized.length ? normalized : [emptyAddOnRow()]
+// }
+
+// function parseAmount(value: string) {
+//   const numeric = Number(String(value || "").replace(/[^0-9.-]/g, ""))
+//   return Number.isFinite(numeric) ? numeric : 0
+// }
+
+// function formatMoney(value: number) {
+//   return new Intl.NumberFormat("en-IN", {
+//     minimumFractionDigits: 2,
+//     maximumFractionDigits: 2,
+//   }).format(value)
+// }
+
+// function formatDisplayDate(value: string) {
+//   if (!value) {
+//     return new Intl.DateTimeFormat("en-US", {
+//       month: "short",
+//       day: "numeric",
+//       year: "numeric",
+//     }).format(new Date())
+//   }
+
+//   const parsed = new Date(`${value}T00:00:00`)
+//   if (Number.isNaN(parsed.getTime())) {
+//     return value
+//   }
+
+//   return new Intl.DateTimeFormat("en-US", {
+//     month: "short",
+//     day: "numeric",
+//     year: "numeric",
+//   }).format(parsed)
+// }
+
+// function fieldClassName() {
+//   return "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/30 dark:focus:ring-white/10"
+// }
+
+// function sectionCardClassName() {
+//   return "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5"
+// }
+
+// export default function QuotationForm({
+//   open,
+//   setOpen,
+//   onSuccess,
+//   quotationId = null,
+//   initialData = null,
+//   clients = [],
+//   mode = null,
+// }: any) {
+//   // If mode is null (editing), detect from data; otherwise use provided mode
+//   const effectiveMode = useMemo(() => {
+//     if (mode) return mode
+//     if (!initialData) return null
+//     const hasTemplateData = Boolean(
+//       initialData?.whyChooseUs?.length ||
+//         initialData?.costBreakdown?.length ||
+//         initialData?.addOns?.length ||
+//         initialData?.organizationName ||
+//         initialData?.organizationDetails ||
+//         initialData?.projectDuration ||
+//         initialData?.requiredDetails ||
+//         initialData?.projectAssetsTechStack ||
+//         initialData?.termsAndConditions ||
+//         initialData?.contractDetails
+//     )
+//     return hasTemplateData ? "template" : "upload"
+//   }, [mode, initialData])
+
+//   if (effectiveMode === "upload") {
+//     return <QuotationUploadForm open={open} setOpen={setOpen} onSuccess={onSuccess} quotationId={quotationId} initialData={initialData} clients={clients} />
+//   }
+
+//   if (effectiveMode === "template") {
+//     return <QuotationTemplateForm open={open} setOpen={setOpen} onSuccess={onSuccess} quotationId={quotationId} initialData={initialData} clients={clients} />
+//   }
+
+//   return null
+// }
+
+// // ─── UPLOAD MODE: Simple file upload and client assignment ─
+// function QuotationUploadForm({ open, setOpen, onSuccess, quotationId = null, initialData = null, clients = [] }: any) {
+//   const [form, setForm] = useState({ title: "", description: "", recipientUserId: "" })
+//   const [file, setFile] = useState<File | null>(null)
+//   const [submitting, setSubmitting] = useState(false)
+//   const [dragOver, setDragOver] = useState(false)
+//   const [error, setError] = useState("")
+
+//   useEffect(() => {
+//     if (initialData) {
+//       setForm({
+//         title: initialData.title || "",
+//         description: initialData.description || "",
+//         recipientUserId: initialData.recipientUserId?._id || initialData.recipientUserId || "",
+//       })
+//       setFile(null)
+//       setError("")
+//     } else {
+//       setForm({ title: "", description: "", recipientUserId: "" })
+//       setFile(null)
+//       setError("")
+//     }
+//   }, [initialData, open])
+
+//   const handleFileChange = (picked: File | null) => {
+//     if (!picked) {
+//       setFile(null)
+//       return
+//     }
+//     if (picked.type !== "application/pdf") {
+//       setError("Only PDF files are accepted. Please upload a PDF.")
+//       return
+//     }
+//     setError("")
+//     setFile(picked)
+//   }
+
+//   const handleDrop = (e: React.DragEvent) => {
+//     e.preventDefault()
+//     setDragOver(false)
+//     handleFileChange(e.dataTransfer.files?.[0] ?? null)
+//   }
+
+//   const formatSize = (bytes: number) =>
+//     bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`
+
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault()
+//     setSubmitting(true)
+//     setError("")
+
+//     if (!form.recipientUserId) {
+//       setError("Please select a client")
+//       setSubmitting(false)
+//       return
+//     }
+
+//     if (!form.title.trim()) {
+//       setError("Project name is required")
+//       setSubmitting(false)
+//       return
+//     }
+
+//     try {
+//       let fileUrl = initialData?.fileUrl || ""
+
+//       // Upload the PDF to Cloudinary
+//       if (file) {
+//         const uploadFormData = new FormData()
+//         uploadFormData.append("file", file)
+
+//         const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadFormData })
+//         const uploadData = await uploadRes.json()
+
+//         if (!uploadRes.ok) {
+//           setError(uploadData.error || "Failed to upload file")
+//           setSubmitting(false)
+//           return
+//         }
+
+//         fileUrl = uploadData.url
+//       }
+
+//       const formData = new FormData()
+//       formData.append("title", form.title)
+//       formData.append("description", form.description)
+//       formData.append("recipientUserId", form.recipientUserId)
+//       formData.append("fileUrl", fileUrl)
+
+//       const method = quotationId ? "PUT" : "POST"
+//       const url = quotationId ? `/api/quotations/${quotationId}` : "/api/quotations"
+
+//       const res = await fetch(url, { method, body: formData })
+//       const data = await res.json()
+
+//       if (!res.ok) {
+//         setError(data.error || "Failed to save quotation")
+//         setSubmitting(false)
+//         return
+//       }
+
+//       setForm({ title: "", description: "", recipientUserId: "" })
+//       setFile(null)
+//       setOpen(false)
+//       onSuccess()
+//     } catch (err: any) {
+//       setError(err.message || "An error occurred")
+//     } finally {
+//       setSubmitting(false)
+//     }
+//   }
+
+//   return (
+//     <Dialog open={open} onOpenChange={setOpen}>
+//       <DialogContent className="max-w-md! rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl dark:border-white/10 dark:bg-zinc-950">
+//         <div className="border-b border-slate-200 px-6 py-5 dark:border-white/10">
+//           <DialogTitle className="text-lg font-semibold text-slate-900 dark:text-white">
+//             {quotationId ? "Edit Quotation" : "Upload Quotation"}
+//           </DialogTitle>
+//           <DialogDescription className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+//             Upload a PDF and assign it to a client.
+//           </DialogDescription>
+//         </div>
+
+//         <form onSubmit={handleSubmit} className="grid gap-5 px-6 py-5">
+//           <style>{`
+//             select option {
+//               background-color: #ffffff;
+//               color: #111827;
+//             }
+//             @media (prefers-color-scheme: dark) {
+//               select option {
+//                 background-color: #18181b;
+//                 color: #ffffff;
+//               }
+//             }
+//           `}</style>
+//           <div className="grid gap-2">
+//             <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Project name *</label>
+//             <input
+//               type="text"
+//               placeholder="e.g. Web Design Proposal Q2"
+//               value={form.title}
+//               onChange={(event) => setForm({ ...form, title: event.target.value })}
+//               required
+//               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/30 dark:focus:ring-white/10"
+//             />
+//           </div>
+
+//           <div className="grid gap-2">
+//             <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Client *</label>
+//             <select
+//               value={form.recipientUserId}
+//               onChange={(event) => setForm({ ...form, recipientUserId: event.target.value })}
+//               required
+//               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/30 dark:focus:ring-white/10"
+//             >
+//               <option value="">Select a client</option>
+//               {clients.map((client: any) => (
+//                 <option key={client._id} value={client._id}>
+//                   {client.name} {client.email ? `(${client.email})` : ""}
+//                 </option>
+//               ))}
+//             </select>
+//           </div>
+
+//           <div className="grid gap-2">
+//             <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Description</label>
+//             <textarea
+//               rows={3}
+//               placeholder="Add a brief description for this quotation (optional)"
+//               value={form.description}
+//               onChange={(event) => setForm({ ...form, description: event.target.value })}
+//               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/30 dark:focus:ring-white/10"
+//             />
+//           </div>
+
+//           <div className="grid gap-2">
+//             <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">PDF Document *</label>
+
+//             {file ? (
+//               <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-700/40 dark:bg-emerald-900/20">
+//                 <div className="flex items-center gap-2.5 min-w-0">
+//                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-emerald-600 dark:text-emerald-400">
+//                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+//                     <polyline points="14 2 14 8 20 8" />
+//                   </svg>
+//                   <div className="min-w-0">
+//                     <p className="truncate text-xs font-semibold text-emerald-800 dark:text-emerald-300">{file.name}</p>
+//                     <p className="text-xs text-emerald-600 dark:text-emerald-500">{formatSize(file.size)}</p>
+//                   </div>
+//                 </div>
+//                 <button
+//                   type="button"
+//                   onClick={() => setFile(null)}
+//                   className="flex-shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-100 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
+//                 >
+//                   Remove
+//                 </button>
+//               </div>
+//             ) : (
+//               <>
+//                 {initialData?.fileUrl && (
+//                   <div className="mb-2 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800/40 dark:bg-blue-900/20">
+//                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-blue-500">
+//                       <circle cx="12" cy="12" r="10" />
+//                       <line x1="12" y1="8" x2="12" y2="12" />
+//                       <line x1="12" y1="16" x2="12.01" y2="16" />
+//                     </svg>
+//                     <p className="text-xs text-blue-700 dark:text-blue-300">A PDF is already attached. Upload a new one to replace it.</p>
+//                   </div>
+//                 )}
+
+//                 <label
+//                   onDragOver={(e) => {
+//                     e.preventDefault()
+//                     setDragOver(true)
+//                   }}
+//                   onDragLeave={() => setDragOver(false)}
+//                   onDrop={handleDrop}
+//                   className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 transition-all ${
+//                     dragOver
+//                       ? "border-slate-400 bg-slate-100 dark:border-white/40 dark:bg-white/10"
+//                       : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20 dark:hover:bg-white/10"
+//                   }`}
+//                 >
+//                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 dark:text-slate-500">
+//                     <polyline points="16 16 12 12 8 16" />
+//                     <line x1="12" y1="12" x2="12" y2="21" />
+//                     <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+//                   </svg>
+//                   <div className="text-center">
+//                     <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+//                       Drop PDF here or <span className="underline underline-offset-2">browse</span>
+//                     </p>
+//                     <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-600">PDF files only</p>
+//                   </div>
+//                   <input
+//                     type="file"
+//                     accept="application/pdf"
+//                     className="hidden"
+//                     onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
+//                   />
+//                 </label>
+//               </>
+//             )}
+//           </div>
+
+//           {error && (
+//             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-400">
+//               {error}
+//             </div>
+//           )}
+
+//           <div className="flex gap-3 pt-2">
+//             <button
+//               type="submit"
+//               disabled={submitting}
+//               className="flex-1 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 dark:bg-white dark:text-slate-900"
+//             >
+//               {submitting ? "Saving..." : quotationId ? "Update quotation" : "Upload quotation"}
+//             </button>
+//             <button
+//               type="button"
+//               onClick={() => setOpen(false)}
+//               className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+//             >
+//               Cancel
+//             </button>
+//           </div>
+//         </form>
+//       </DialogContent>
+//     </Dialog>
+//   )
+// }
+
+// // ─── TEMPLATE MODE: Full quotation template builder with preview ─
+// function QuotationTemplateForm({
+//   open,
+//   setOpen,
+//   onSuccess,
+//   quotationId = null,
+//   initialData = null,
+//   clients = [],
+// }: any) {
+//   const previewRef = useRef<HTMLDivElement | null>(null)
+//   const [form, setForm] = useState(createDefaultForm)
+//   const [business, setBusiness] = useState(defaultBusiness)
+//   const [whyChooseUs, setWhyChooseUs] = useState([""])
+//   const [costBreakdown, setCostBreakdown] = useState([emptyCostRow()])
+//   const [addOns, setAddOns] = useState([emptyAddOnRow()])
+//   const [submitting, setSubmitting] = useState(false)
+//   const [loadingBusiness, setLoadingBusiness] = useState(false)
+//   const [error, setError] = useState("")
+
+//   useEffect(() => {
+//     if (!open) {
+//       return
+//     }
+
+//     const loadBusinessSettings = async () => {
+//       setLoadingBusiness(true)
+//       try {
+//         const response = await fetch("/api/business-settings", { credentials: "include" })
+//         const payload = await response.json()
+//         const settings = payload.settings || {}
+
+//         setBusiness({
+//           businessName: settings.businessName || defaultBusiness.businessName,
+//           logoUrl: settings.logoUrl || "",
+//           email: settings.email || "",
+//           phone: settings.phone || "",
+//           website: settings.website || "",
+//           address: settings.address || "",
+//         })
+//       } catch {
+//         setBusiness(defaultBusiness)
+//       } finally {
+//         setLoadingBusiness(false)
+//       }
+//     }
+
+//     if (initialData) {
+//       setForm({
+//         ...createDefaultForm(),
+//         title: initialData.title || "",
+//         description: initialData.description || "",
+//         recipientUserId: initialData.recipientUserId?._id || initialData.recipientUserId || "",
+//         date: initialData.date || new Date().toISOString().slice(0, 10),
+//         organizationName: initialData.organizationName || "",
+//         organizationDetails: initialData.organizationDetails || "",
+//         projectDuration: initialData.projectDuration || "",
+//         requiredDetails: initialData.requiredDetails || "",
+//         projectAssetsTechStack: initialData.projectAssetsTechStack || "",
+//         termsAndConditions: initialData.termsAndConditions || "",
+//         contractDetails: initialData.contractDetails || "",
+//         thankYouNote: initialData.thankYouNote || "Thank you for doing business with us.",
+//         discount: initialData.discount || "",
+//       })
+
+//       setBusiness({
+//         businessName: initialData.businessName || defaultBusiness.businessName,
+//         logoUrl: initialData.businessLogoUrl || "",
+//         email: initialData.businessEmail || "",
+//         phone: initialData.businessPhone || "",
+//         website: initialData.businessWebsite || "",
+//         address: initialData.businessAddress || "",
+//       })
+//       setWhyChooseUs(normalizeStringArray(initialData.whyChooseUs))
+//       setCostBreakdown(normalizeCostRows(initialData.costBreakdown))
+//       setAddOns(normalizeAddOns(initialData.addOns))
+//       setError("")
+//       return
+//     }
+
+//     setForm(createDefaultForm())
+//     setWhyChooseUs([""])
+//     setCostBreakdown([emptyCostRow()])
+//     setAddOns([emptyAddOnRow()])
+//     setError("")
+//     loadBusinessSettings()
+//   }, [initialData, open])
+
+//   const selectedClient = useMemo(
+//     () => clients.find((client: any) => String(client._id) === String(form.recipientUserId)),
+//     [clients, form.recipientUserId]
+//   )
+
+//   const subtotalValue = useMemo(
+//     () => costBreakdown.reduce((sum, row) => sum + parseAmount(row.amount), 0),
+//     [costBreakdown]
+//   )
+
+//   const discountAmount = parseAmount((form as any).discount || "")
+//   const totalValue = Math.max(0, subtotalValue - discountAmount)
+
+//   const handleWhyChooseChange = (index: number, value: string) => {
+//     setWhyChooseUs((current) => current.map((entry, currentIndex) => (currentIndex === index ? value : entry)))
+//   }
+
+//   const handleCostBreakdownChange = (index: number, field: keyof ReturnType<typeof emptyCostRow>, value: string) => {
+//     setCostBreakdown((current) => current.map((entry, currentIndex) => (currentIndex === index ? { ...entry, [field]: value } : entry)))
+//   }
+
+//   const handleAddOnChange = (index: number, field: keyof ReturnType<typeof emptyAddOnRow>, value: string) => {
+//     setAddOns((current) => current.map((entry, currentIndex) => (currentIndex === index ? { ...entry, [field]: value } : entry)))
+//   }
+
+//   const addWhyChooseField = () => setWhyChooseUs((current) => [...current, ""])
+//   const addCostRow = () => setCostBreakdown((current) => [...current, emptyCostRow()])
+//   const addAddOnRow = () => setAddOns((current) => [...current, emptyAddOnRow()])
+
+//   const removeWhyChooseField = (index: number) => {
+//     setWhyChooseUs((current) => (current.length > 1 ? current.filter((_, currentIndex) => currentIndex !== index) : current))
+//   }
+
+//   const removeCostRow = (index: number) => {
+//     setCostBreakdown((current) => (current.length > 1 ? current.filter((_, currentIndex) => currentIndex !== index) : current))
+//   }
+
+//   const removeAddOnRow = (index: number) => {
+//     setAddOns((current) => (current.length > 1 ? current.filter((_, currentIndex) => currentIndex !== index) : current))
+//   }
+
+//   const generatePdfBlob = async () => {
+//     const previewElement = previewRef.current
+
+//     if (!previewElement) {
+//       throw new Error("Quotation preview is not ready.")
+//     }
+
+//     const imageData = await toPng(previewElement, {
+//       cacheBust: true,
+//       pixelRatio: 2,
+//       backgroundColor: "#ffffff",
+//       // Tailwind v4 emits oklch/oklab in generated CSS. Skipping embedded font CSS
+//       // avoids parser failures in html-to-image on some environments.
+//       skipFonts: true,
+//       style: {
+//         "--color-slate-50": "#f8fafc",
+//         "--color-slate-100": "#f1f5f9",
+//         "--color-slate-200": "#e2e8f0",
+//         "--color-slate-500": "#64748b",
+//         "--color-slate-600": "#475569",
+//         "--color-slate-700": "#334155",
+//         "--color-slate-900": "#0f172a",
+//         "--color-white": "#ffffff",
+//       } as any,
+//     })
+
+//     const image = new Image()
+//     image.src = imageData
+
+//     await new Promise<void>((resolve, reject) => {
+//       image.onload = () => resolve()
+//       image.onerror = () => reject(new Error("Failed to render quotation preview image."))
+//     })
+
+//     const imageWidth = image.naturalWidth || image.width
+//     const imageHeight = image.naturalHeight || image.height
+
+//     if (!imageWidth || !imageHeight) {
+//       throw new Error("Failed to measure quotation preview image.")
+//     }
+
+//     const pdf = new jsPDF("p", "mm", "a4")
+//     const pageWidth = pdf.internal.pageSize.getWidth()
+//     const pageHeight = pdf.internal.pageSize.getHeight()
+//     const margin = 10
+//     const contentWidth = pageWidth - margin * 2
+//     const contentHeight = (imageHeight * contentWidth) / imageWidth
+//     const pageContentHeight = pageHeight - margin * 2
+//     let renderedHeight = 0
+
+//     const totalPages = Math.max(1, Math.ceil(contentHeight / pageContentHeight))
+
+//     for (let pageIndex = 0; pageIndex < totalPages; pageIndex += 1) {
+//       if (pageIndex > 0) {
+//         pdf.addPage()
+//       }
+
+//       pdf.addImage(imageData, "PNG", margin, margin - renderedHeight, contentWidth, contentHeight)
+//       renderedHeight += pageContentHeight
+//     }
+
+//     const pdfBuffer = pdf.output("arraybuffer")
+//     return new Blob([pdfBuffer], { type: "application/pdf" })
+//   }
+
+//   const appendCommonFields = (payload: FormData, fileUrl: string) => {
+//     payload.append("title", form.title)
+//     payload.append("description", form.description)
+//     payload.append("recipientUserId", form.recipientUserId)
+//     payload.append("fileUrl", fileUrl)
+//     payload.append("date", form.date)
+//     payload.append("organizationName", form.organizationName || selectedClient?.name || "")
+//     payload.append("organizationDetails", form.organizationDetails || `${selectedClient?.name || ""}${selectedClient?.email ? `\n${selectedClient.email}` : ""}`)
+//     payload.append("projectDuration", form.projectDuration)
+//     payload.append("requiredDetails", form.requiredDetails)
+//     payload.append("projectAssetsTechStack", form.projectAssetsTechStack)
+//     payload.append("termsAndConditions", form.termsAndConditions)
+//     payload.append("contractDetails", form.contractDetails)
+//     payload.append("thankYouNote", form.thankYouNote)
+//     payload.append("subtotal", String(subtotalValue))
+//     payload.append("discount", form.discount)
+//     payload.append("total", String(totalValue))
+//     payload.append("businessName", business.businessName)
+//     payload.append("businessLogoUrl", business.logoUrl)
+//     payload.append("businessEmail", business.email)
+//     payload.append("businessPhone", business.phone)
+//     payload.append("businessWebsite", business.website)
+//     payload.append("businessAddress", business.address)
+//     payload.append("whyChooseUs", JSON.stringify(whyChooseUs.map((entry) => entry.trim()).filter(Boolean)))
+//     payload.append("costBreakdown", JSON.stringify(costBreakdown.filter((row) => row.item || row.description || row.amount)))
+//     payload.append("addOns", JSON.stringify(addOns.filter((row) => row.label || row.amount)))
+//   }
+
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault()
+//     setSubmitting(true)
+//     setError("")
+
+//     if (!form.recipientUserId) {
+//       setError("Please select a client")
+//       setSubmitting(false)
+//       return
+//     }
+
+//     if (!form.title.trim()) {
+//       setError("Project name is required")
+//       setSubmitting(false)
+//       return
+//     }
+
+//     try {
+//       const pdfBlob = await generatePdfBlob()
+//       const pdfHeader = await pdfBlob.slice(0, 5).text()
+//       if (!pdfHeader.startsWith("%PDF-")) {
+//         throw new Error("Generated quotation file is not a valid PDF.")
+//       }
+//       const uploadFileName = `${(form.title || "quotation").trim().replace(/[^a-zA-Z0-9._-]+/g, "-") || "quotation"}.pdf`
+//       const pdfArrayBuffer = await pdfBlob.arrayBuffer()
+
+//       const uploadResponse = await fetch("/api/upload", {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/pdf",
+//           "x-file-name": encodeURIComponent(uploadFileName),
+//           "x-file-type": "application/pdf",
+//         },
+//         body: pdfArrayBuffer,
+//       })
+
+//       const uploadData = await uploadResponse.json()
+
+//       if (!uploadResponse.ok) {
+//         throw new Error(uploadData.error || "Failed to generate quotation PDF")
+//       }
+
+//       const formData = new FormData()
+//       appendCommonFields(formData, uploadData.url)
+
+//       const method = quotationId ? "PUT" : "POST"
+//       const url = quotationId ? `/api/quotations/${quotationId}` : "/api/quotations"
+
+//       const response = await fetch(url, { method, body: formData })
+//       const payload = await response.json()
+
+//       if (!response.ok) {
+//         throw new Error(payload.error || "Failed to save quotation")
+//       }
+
+//       setOpen(false)
+//       onSuccess()
+//     } catch (requestError) {
+//       setError(requestError instanceof Error ? requestError.message : "An error occurred")
+//     } finally {
+//       setSubmitting(false)
+//     }
+//   }
+
+//   const businessInitial = business.businessName?.trim()?.[0]?.toUpperCase() || "B"
+//   const quoteOrganizationName = form.organizationName || selectedClient?.name || "Organization name"
+//   const quoteOrganizationDetails = form.organizationDetails || [selectedClient?.name, selectedClient?.email].filter(Boolean).join("\n") || "Organization details"
+
+//   return (
+//     <Dialog open={open} onOpenChange={setOpen}>
+//       <DialogContent className="max-h-[92vh] w-[min(98vw,1600px)] max-w-none! overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl dark:border-white/10 dark:bg-zinc-950">
+//         <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-4 dark:border-white/10">
+//           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-white">
+//             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+//               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+//               <polyline points="14 2 14 8 20 8" />
+//               <line x1="9" y1="13" x2="15" y2="13" />
+//               <line x1="9" y1="17" x2="12" y2="17" />
+//             </svg>
+//           </div>
+//           <div className="min-w-0">
+//             <DialogTitle className="text-sm font-semibold text-slate-900 dark:text-white">
+//               {quotationId ? "Edit Quotation Template" : "Create Quotation Template"}
+//             </DialogTitle>
+//             <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+//               Build the quotation layout here, then export it as a PDF attachment for the client.
+//             </DialogDescription>
+//           </div>
+//           {loadingBusiness ? <span className="ml-auto text-xs text-slate-400">Loading business profile...</span> : null}
+//         </div>
+
+//         <form onSubmit={handleSubmit} className="grid max-h-[calc(92vh-72px)] grid-cols-1 gap-0 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+//           <style>{`
+//             select option {
+//               background-color: #ffffff;
+//               color: #111827;
+//             }
+//             @media (prefers-color-scheme: dark) {
+//               select option {
+//                 background-color: #18181b;
+//                 color: #ffffff;
+//               }
+//             }
+//           `}</style>
+//           <div className="min-w-0 max-h-[calc(92vh-72px)] overflow-y-auto border-b border-slate-200 px-5 py-5 xl:border-b-0 xl:border-r xl:border-slate-200 dark:border-white/10">
+//             <div className="grid gap-4">
+//               <div className={sectionCardClassName()}>
+//                 <div className="grid gap-4 md:grid-cols-2">
+//                   <div className="grid gap-2 md:col-span-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Project name *</label>
+//                     <input
+//                       value={form.title}
+//                       onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+//                       placeholder="e.g. Website Redesign"
+//                       className={fieldClassName()}
+//                       required
+//                     />
+//                   </div>
+
+//                   <div className="grid gap-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Client *</label>
+//                     <select
+//                       value={form.recipientUserId}
+//                       onChange={(event) => setForm((current) => ({ ...current, recipientUserId: event.target.value }))}
+//                       className={fieldClassName()}
+//                       required
+//                     >
+//                       <option value="">Select a client</option>
+//                       {clients.map((client: any) => (
+//                         <option key={client._id} value={client._id}>
+//                           {client.name} {client.email ? `(${client.email})` : ""}
+//                         </option>
+//                       ))}
+//                     </select>
+//                   </div>
+
+//                   <div className="grid gap-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Date</label>
+//                     <input
+//                       type="date"
+//                       value={form.date}
+//                       onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+
+//                   <div className="grid gap-2 md:col-span-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Project notes</label>
+//                     <textarea
+//                       rows={3}
+//                       value={form.description}
+//                       onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+//                       placeholder="Optional note or short summary for the quotation"
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+//                 </div>
+//               </div>
+
+//               <div className={sectionCardClassName()}>
+//                 <div className="mb-4 flex items-center justify-between gap-3">
+//                   <div>
+//                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Quotation Header</h3>
+//                     <p className="text-xs text-slate-500 dark:text-slate-400">Business branding comes from the stored business settings.</p>
+//                   </div>
+//                 </div>
+
+//                 <div className="grid gap-4 md:grid-cols-2">
+//                   <div className="grid gap-2 md:col-span-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Organization name</label>
+//                     <input
+//                       value={form.organizationName}
+//                       onChange={(event) => setForm((current) => ({ ...current, organizationName: event.target.value }))}
+//                       placeholder={selectedClient?.name || "Organization name"}
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+
+//                   <div className="grid gap-2 md:col-span-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Client details</label>
+//                     <textarea
+//                       rows={3}
+//                       value={form.organizationDetails}
+//                       onChange={(event) => setForm((current) => ({ ...current, organizationDetails: event.target.value }))}
+//                       placeholder="Recipient details, address, contact person, or context"
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+//                 </div>
+//               </div>
+
+//               <div className={sectionCardClassName()}>
+//                 <div className="mb-4 flex items-center justify-between gap-3">
+//                   <div>
+//                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Why Choose Us</h3>
+//                     <p className="text-xs text-slate-500 dark:text-slate-400">Add multiple selling points or differentiators.</p>
+//                   </div>
+//                   <button type="button" onClick={addWhyChooseField} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5">
+//                     + Add point
+//                   </button>
+//                 </div>
+
+//                 <div className="grid gap-3">
+//                   {whyChooseUs.map((entry, index) => (
+//                     <div key={`why-${index}`} className="flex gap-2">
+//                       <input
+//                         value={entry}
+//                         onChange={(event) => handleWhyChooseChange(index, event.target.value)}
+//                         placeholder={`Point ${index + 1}`}
+//                         className={fieldClassName()}
+//                       />
+//                       <button type="button" onClick={() => removeWhyChooseField(index)} className="rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">
+//                         Remove
+//                       </button>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+
+//               <div className={sectionCardClassName()}>
+//                 <div className="mb-4 flex items-center justify-between gap-3">
+//                   <div>
+//                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Project Cost Breakdown</h3>
+//                     <p className="text-xs text-slate-500 dark:text-slate-400">Break the proposal into clear billable items.</p>
+//                   </div>
+//                   <button type="button" onClick={addCostRow} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5">
+//                     + Add item
+//                   </button>
+//                 </div>
+
+//                 <div className="grid gap-3">
+//                   {costBreakdown.map((row, index) => (
+//                     <div key={`cost-${index}`} className="rounded-2xl border border-slate-200 p-3 dark:border-white/10">
+//                       <div className="grid gap-3 md:grid-cols-[1.1fr_1.5fr_0.7fr_auto]">
+//                         <input
+//                           value={row.item}
+//                           onChange={(event) => handleCostBreakdownChange(index, "item", event.target.value)}
+//                           placeholder="Item"
+//                           className={fieldClassName()}
+//                         />
+//                         <input
+//                           value={row.description}
+//                           onChange={(event) => handleCostBreakdownChange(index, "description", event.target.value)}
+//                           placeholder="Description"
+//                           className={fieldClassName()}
+//                         />
+//                         <input
+//                           value={row.amount}
+//                           onChange={(event) => handleCostBreakdownChange(index, "amount", event.target.value)}
+//                           placeholder="Amount"
+//                           className={fieldClassName()}
+//                         />
+//                         <button type="button" onClick={() => removeCostRow(index)} className="rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">
+//                           Remove
+//                         </button>
+//                       </div>
+//                     </div>
+//                   ))}
+//                 </div>
+
+//                 <div className="mt-4 grid gap-3 md:grid-cols-3">
+//                   <div className="grid gap-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Subtotal</label>
+//                     <input value={formatMoney(subtotalValue)} readOnly className={fieldClassName()} />
+//                   </div>
+//                   <div className="grid gap-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Discount</label>
+//                     <input
+//                       value={form.discount}
+//                       onChange={(event) => setForm((current) => ({ ...current, discount: event.target.value }))}
+//                       placeholder="0.00"
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+//                   <div className="grid gap-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Total</label>
+//                     <input value={formatMoney(totalValue)} readOnly className={fieldClassName()} />
+//                   </div>
+//                 </div>
+//               </div>
+
+//               <div className={sectionCardClassName()}>
+//                 <div className="mb-4 flex items-center justify-between gap-3">
+//                   <div>
+//                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Add-on fields</h3>
+//                     <p className="text-xs text-slate-500 dark:text-slate-400">Add optional extras or follow-up items.</p>
+//                   </div>
+//                   <button type="button" onClick={addAddOnRow} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5">
+//                     + Add field
+//                   </button>
+//                 </div>
+
+//                 <div className="grid gap-3">
+//                   {addOns.map((row, index) => (
+//                     <div key={`addon-${index}`} className="grid gap-3 md:grid-cols-[1fr_0.4fr_auto]">
+//                       <input
+//                         value={row.label}
+//                         onChange={(event) => handleAddOnChange(index, "label", event.target.value)}
+//                         placeholder="Add-on label"
+//                         className={fieldClassName()}
+//                       />
+//                       <input
+//                         value={row.amount}
+//                         onChange={(event) => handleAddOnChange(index, "amount", event.target.value)}
+//                         placeholder="Amount"
+//                         className={fieldClassName()}
+//                       />
+//                       <button type="button" onClick={() => removeAddOnRow(index)} className="rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">
+//                         Remove
+//                       </button>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+
+//               <div className={sectionCardClassName()}>
+//                 <div className="grid gap-4 md:grid-cols-2">
+//                   <div className="grid gap-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Project duration</label>
+//                     <input
+//                       value={form.projectDuration}
+//                       onChange={(event) => setForm((current) => ({ ...current, projectDuration: event.target.value }))}
+//                       placeholder="e.g. 6 weeks"
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+
+//                   <div className="grid gap-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Required details</label>
+//                     <textarea
+//                       rows={4}
+//                       value={form.requiredDetails}
+//                       onChange={(event) => setForm((current) => ({ ...current, requiredDetails: event.target.value }))}
+//                       placeholder="Any required access, details, or approvals"
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+
+//                   <div className="grid gap-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Project assets and tech stack used</label>
+//                     <textarea
+//                       rows={4}
+//                       value={form.projectAssetsTechStack}
+//                       onChange={(event) => setForm((current) => ({ ...current, projectAssetsTechStack: event.target.value }))}
+//                       placeholder="Assets, libraries, frameworks, tools"
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+
+//                   <div className="grid gap-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Contract details</label>
+//                     <textarea
+//                       rows={4}
+//                       value={form.contractDetails}
+//                       onChange={(event) => setForm((current) => ({ ...current, contractDetails: event.target.value }))}
+//                       placeholder="Milestones, sign-off, payment schedule, and contract notes"
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+
+//                   <div className="grid gap-2 md:col-span-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Terms and conditions</label>
+//                     <textarea
+//                       rows={5}
+//                       value={form.termsAndConditions}
+//                       onChange={(event) => setForm((current) => ({ ...current, termsAndConditions: event.target.value }))}
+//                       placeholder="List your terms and conditions here"
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+
+//                   <div className="grid gap-2 md:col-span-2">
+//                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Thank-you note</label>
+//                     <input
+//                       value={form.thankYouNote}
+//                       onChange={(event) => setForm((current) => ({ ...current, thankYouNote: event.target.value }))}
+//                       className={fieldClassName()}
+//                     />
+//                   </div>
+//                 </div>
+//               </div>
+
+//               {error ? (
+//                 <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-300">
+//                   {error}
+//                 </div>
+//               ) : null}
+
+//               <div className="flex gap-3 pb-2">
+//                 <button
+//                   type="submit"
+//                   disabled={submitting}
+//                   className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-900"
+//                 >
+//                   {submitting ? "Saving quotation..." : quotationId ? "Update quotation" : "Create quotation"}
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => setOpen(false)}
+//                   className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+//                 >
+//                   Cancel
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+
+//           <div className="min-w-0 max-h-[calc(92vh-72px)] overflow-y-auto bg-slate-50 px-4 py-5 dark:bg-zinc-900/60">
+//             <div ref={previewRef} className="mx-auto w-full min-w-0 max-w-none overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-slate-900 shadow-xl dark:border-white/10 dark:bg-white">
+//               <div className="border-b border-slate-200 px-6 py-5">
+//                 <div className="flex items-start justify-between gap-4">
+//                   <div className="flex items-center gap-4">
+//                     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+//                       {business.logoUrl ? (
+//                         <img
+//                           src={business.logoUrl}
+//                           alt={business.businessName || "Business logo"}
+//                           crossOrigin="anonymous"
+//                           className="h-full w-full object-cover"
+//                         />
+//                       ) : (
+//                         <span className="text-lg font-semibold text-slate-500">{businessInitial}</span>
+//                       )}
+//                     </div>
+//                     <div>
+//                       <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">Quotation</p>
+//                       <h2 className="text-2xl font-semibold tracking-tight">{business.businessName || defaultBusiness.businessName}</h2>
+//                       <p className="mt-1 text-sm text-slate-500">{business.website || business.email || business.phone || "Business profile details"}</p>
+//                     </div>
+//                   </div>
+
+//                   <div className="text-right">
+//                     <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">Date</p>
+//                     <p className="mt-1 text-sm font-medium text-slate-900">{formatDisplayDate(form.date)}</p>
+//                   </div>
+//                 </div>
+//               </div>
+
+//               <div className="space-y-6 px-6 py-6">
+//                 <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-start lg:justify-between">
+//                   <div>
+//                     <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">Quotation of</p>
+//                     <h3 className="mt-2 text-3xl font-semibold tracking-tight">{form.title || "Project name"}</h3>
+//                     <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">{form.description || "Add a short description to summarize the scope and intent of the quotation."}</p>
+//                   </div>
+
+//                   <div className="w-full rounded-2xl bg-slate-50 p-4">
+//                     <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-500">Client details</p>
+//                     <p className="mt-2 text-base font-semibold text-slate-900">{quoteOrganizationName}</p>
+//                     <p className="whitespace-pre-line text-sm leading-6 text-slate-600">{quoteOrganizationDetails}</p>
+//                   </div>
+//                 </div>
+
+//                 <div className="grid gap-4 md:grid-cols-2">
+//                   <div className="rounded-2xl border border-slate-200 p-4">
+//                     <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Business details</p>
+//                     <div className="mt-3 space-y-2 text-sm text-slate-600">
+//                       <p className="font-medium text-slate-900">{business.businessName || defaultBusiness.businessName}</p>
+//                       <p>{business.address || "Business address"}</p>
+//                       <p>{business.website || "Website not set"}</p>
+//                       <p>{business.email || "Email not set"}</p>
+//                       <p>{business.phone || "Phone not set"}</p>
+//                     </div>
+//                   </div>
+
+//                   <div className="rounded-2xl border border-slate-200 p-4">
+//                     <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Project details</p>
+//                     <div className="mt-3 space-y-2 text-sm text-slate-600">
+//                       <p><span className="font-medium text-slate-900">Duration:</span> {form.projectDuration || "Not set"}</p>
+//                       <p><span className="font-medium text-slate-900">Client:</span> {selectedClient?.name || form.organizationName || "Not set"}</p>
+//                       <p><span className="font-medium text-slate-900">Subtotal:</span> ₹{formatMoney(subtotalValue)}</p>
+//                       <p><span className="font-medium text-slate-900">Discount:</span> ₹{formatMoney(discountAmount)}</p>
+//                       <p><span className="font-medium text-slate-900">Total:</span> ₹{formatMoney(totalValue)}</p>
+//                     </div>
+//                   </div>
+//                 </div>
+
+//                 <section>
+//                   <div className="mb-3 flex items-center gap-2">
+//                     <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+//                     <h4 className="text-lg font-semibold">Why Choose Us</h4>
+//                   </div>
+//                   <div className="grid gap-2">
+//                     {whyChooseUs.filter(Boolean).length ? whyChooseUs.filter(Boolean).map((entry, index) => (
+//                       <div key={`why-preview-${index}`} className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+//                         <span className="mt-1 h-2 w-2 rounded-full bg-slate-900" />
+//                         <span>{entry}</span>
+//                       </div>
+//                     )) : (
+//                       <p className="text-sm text-slate-500">Add reasons to show why the client should choose your business.</p>
+//                     )}
+//                   </div>
+//                 </section>
+
+//                 <section>
+//                   <div className="mb-3 flex items-center gap-2">
+//                     <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+//                     <h4 className="text-lg font-semibold">Project cost breakdown</h4>
+//                   </div>
+//                   <div className="overflow-hidden rounded-2xl border border-slate-200">
+//                     <table className="w-full text-sm">
+//                       <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.3em] text-slate-500">
+//                         <tr>
+//                           <th className="px-4 py-3">Item</th>
+//                           <th className="px-4 py-3">Description</th>
+//                           <th className="px-4 py-3 text-right">Amount</th>
+//                         </tr>
+//                       </thead>
+//                       <tbody className="divide-y divide-slate-200">
+//                         {costBreakdown.filter((row) => row.item || row.description || row.amount).length ? costBreakdown.filter((row) => row.item || row.description || row.amount).map((row, index) => (
+//                           <tr key={`cost-preview-${index}`}>
+//                             <td className="px-4 py-3 font-medium text-slate-900">{row.item || "Item"}</td>
+//                             <td className="px-4 py-3 text-slate-600">{row.description || "-"}</td>
+//                             <td className="px-4 py-3 text-right font-medium text-slate-900">₹{formatMoney(parseAmount(row.amount))}</td>
+//                           </tr>
+//                         )) : (
+//                           <tr>
+//                             <td colSpan={3} className="px-4 py-6 text-center text-sm text-slate-500">Add cost items to complete the quotation.</td>
+//                           </tr>
+//                         )}
+//                       </tbody>
+//                     </table>
+//                   </div>
+//                 </section>
+
+//                 <section className="grid gap-4 md:grid-cols-2">
+//                   <div className="rounded-2xl border border-slate-200 p-4">
+//                     <div className="mb-3 flex items-center gap-2">
+//                       <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+//                       <h4 className="text-lg font-semibold">Add-ons</h4>
+//                     </div>
+//                     <div className="space-y-2 text-sm text-slate-700">
+//                       {addOns.filter((row) => row.label || row.amount).length ? addOns.filter((row) => row.label || row.amount).map((row, index) => (
+//                         <div key={`addon-preview-${index}`} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+//                           <span>{row.label || "Add-on"}</span>
+//                           <span className="font-medium">{row.amount || "0.00"}</span>
+//                         </div>
+//                       )) : (
+//                         <p className="text-sm text-slate-500">Add optional fields or extras here.</p>
+//                       )}
+//                     </div>
+//                   </div>
+
+//                   <div className="rounded-2xl border border-slate-200 p-4">
+//                     <div className="mb-3 flex items-center gap-2">
+//                       <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+//                       <h4 className="text-lg font-semibold">Totals</h4>
+//                     </div>
+//                     <div className="space-y-2 text-sm">
+//                       <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+//                         <span>Subtotal</span>
+//                         <span className="font-medium">₹{formatMoney(subtotalValue)}</span>
+//                       </div>
+//                       <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+//                         <span>Discount</span>
+//                         <span className="font-medium">₹{formatMoney(discountAmount)}</span>
+//                       </div>
+//                       <div className="flex items-center justify-between rounded-xl bg-slate-900 px-4 py-3 text-white">
+//                         <span>Total</span>
+//                         <span className="font-semibold">₹{formatMoney(totalValue)}</span>
+//                       </div>
+//                     </div>
+//                   </div>
+//                 </section>
+
+//                 <section className="grid gap-4 md:grid-cols-2">
+//                   <div className="rounded-2xl border border-slate-200 p-4">
+//                     <div className="mb-3 flex items-center gap-2">
+//                       <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+//                       <h4 className="text-lg font-semibold">Required details</h4>
+//                     </div>
+//                     <p className="whitespace-pre-line text-sm leading-6 text-slate-600">{form.requiredDetails || "No required details provided."}</p>
+//                   </div>
+
+//                   <div className="rounded-2xl border border-slate-200 p-4">
+//                     <div className="mb-3 flex items-center gap-2">
+//                       <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+//                       <h4 className="text-lg font-semibold">Assets and tech stack</h4>
+//                     </div>
+//                     <p className="whitespace-pre-line text-sm leading-6 text-slate-600">{form.projectAssetsTechStack || "No assets or tech stack details provided."}</p>
+//                   </div>
+//                 </section>
+
+//                 <section className="grid gap-4 md:grid-cols-2">
+//                   <div className="rounded-2xl border border-slate-200 p-4">
+//                     <div className="mb-3 flex items-center gap-2">
+//                       <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+//                       <h4 className="text-lg font-semibold">Terms and conditions</h4>
+//                     </div>
+//                     <p className="whitespace-pre-line text-sm leading-6 text-slate-600">{form.termsAndConditions || "No terms and conditions provided."}</p>
+//                   </div>
+
+//                   <div className="rounded-2xl border border-slate-200 p-4">
+//                     <div className="mb-3 flex items-center gap-2">
+//                       <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+//                       <h4 className="text-lg font-semibold">Contract details</h4>
+//                     </div>
+//                     <p className="whitespace-pre-line text-sm leading-6 text-slate-600">{form.contractDetails || "No contract details provided."}</p>
+//                   </div>
+//                 </section>
+
+//                 <section className="rounded-[1.75rem] border border-slate-200 bg-slate-50 px-5 py-5">
+//                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+//                     <div className="flex items-center gap-4">
+//                       <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white">
+//                         {business.logoUrl ? (
+//                           <img src={business.logoUrl} alt={business.businessName || "Business logo"} crossOrigin="anonymous" className="h-full w-full object-cover" />
+//                         ) : (
+//                           <span className="text-base font-semibold text-slate-500">{businessInitial}</span>
+//                         )}
+//                       </div>
+//                       <div>
+//                         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Footer</p>
+//                         <p className="mt-1 text-lg font-semibold text-slate-900">{business.businessName || defaultBusiness.businessName}</p>
+//                         <p className="text-sm text-slate-500">{business.email || business.phone || business.website || "Business contact details"}</p>
+//                       </div>
+//                     </div>
+//                     <p className="max-w-md text-right text-sm leading-6 text-slate-600">{form.thankYouNote}</p>
+//                   </div>
+//                 </section>
+//               </div>
+//             </div>
+//           </div>
+//         </form>
+//       </DialogContent>
+//     </Dialog>
+//   )
+// }

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import mongoose from "mongoose"
 import Payment from "../../../lib/models/Payment"
 import User from "@/lib/models/User"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth-options"
 import notificationService from "@/lib/notifications/notification-service"
 
 async function connectDB() {
@@ -13,10 +15,18 @@ async function connectDB() {
 export async function GET(req) {
   await connectDB()
 
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const { searchParams } = new URL(req.url)
   const email = searchParams.get("email")
 
-  const query = email ? { clientEmail: email } : {}
+  // For non-admins, only allow viewing their own payments
+  const query = session.user.role === "admin" && email
+    ? { clientEmail: email }
+    : { clientEmail: session.user.email }
 
   const payments = await Payment.find(query).sort({ createdAt: -1 })
 

@@ -115,6 +115,24 @@ export function AppSidebar({
         icon: <WalletCards />,
       }
     )
+  } else if (normalizedRole === "client") {
+    navMain.push(
+      {
+        title: "Billing",
+        url: "/dashboard/client/billing",
+        icon: <ReceiptIcon />,
+      },
+      {
+        title: "Quotations",
+        url: "/dashboard/client/quotations",
+        icon: <BookA />,
+      },
+      {
+        title: "Payments",
+        url: "/dashboard/client/payment",
+        icon: <WalletCards />,
+      }
+    )
   }
   return (
     <Sidebar collapsible="icon" {...props}>

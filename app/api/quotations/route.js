@@ -111,6 +111,7 @@ export async function POST(req) {
     const businessPhone = formData.get("businessPhone")
     const businessWebsite = formData.get("businessWebsite")
     const businessAddress = formData.get("businessAddress")
+    const businessGstin = formData.get("businessGstin")
     const whyChooseUs = parseJsonField(formData.get("whyChooseUs"), [])
     const costBreakdown = parseJsonField(formData.get("costBreakdown"), [])
     const addOns = parseJsonField(formData.get("addOns"), [])
@@ -151,6 +152,7 @@ export async function POST(req) {
       businessPhone: businessPhone || "",
       businessWebsite: businessWebsite || "",
       businessAddress: businessAddress || "",
+      businessGstin: businessGstin || "",
       whyChooseUs,
       costBreakdown,
       addOns,

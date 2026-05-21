@@ -145,10 +145,17 @@ export async function GET() {
 
   await connectToDatabase();
 
-  const bills =
-    session.user.role === "admin"
-      ? await loadBilling({})
-      : await loadBilling({ recipientUser: session.user.id });
+  let bills;
+  if (session.user.role === "admin") {
+    bills = await loadBilling({});
+  } else {
+    // For clients, look up their actual MongoDB user ID
+    const user = await User.findOne({ email: session.user.email });
+    if (!user) {
+      return Response.json({ error: "User not found" }, { status: 404 });
+    }
+    bills = await loadBilling({ recipientUser: user._id });
+  }
 
   return Response.json({ bills });
 }
