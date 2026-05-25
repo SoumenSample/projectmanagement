@@ -19,6 +19,8 @@ type AccountUser = {
   region?: string
   source?: string
   isActive?: boolean
+  homeLatitude?: number | null
+  homeLongitude?: number | null
 }
 
 type AccountEditorProps = {
@@ -29,7 +31,10 @@ type AccountEditorProps = {
 export function AccountEditor({ user, canEdit }: AccountEditorProps) {
   const router = useRouter()
   const canEditJobLocation = canEdit
-  const canSubmit = canEdit
+  const canEditHomeLocation = canEdit || user.role === "employee"
+  const canSubmit = canEdit || user.role === "employee"
+  const canEmployeeSelfEdit = user.role === "employee"
+  const [fetchingHomeLocation, setFetchingHomeLocation] = useState(false)
   const [formData, setFormData] = useState({
     name: user.name || "",
     email: user.email || "",
@@ -38,6 +43,8 @@ export function AccountEditor({ user, canEdit }: AccountEditorProps) {
     source: user.source || "",
     employeeRole: (user as any).employeeRole || "",
     jobLocation: (user as any).jobLocation || "",
+    homeLatitude: user.homeLatitude === null || user.homeLatitude === undefined ? "" : String(user.homeLatitude),
+    homeLongitude: user.homeLongitude === null || user.homeLongitude === undefined ? "" : String(user.homeLongitude),
     isActive: user.isActive ?? true,
   })
   const [saving, setSaving] = useState(false)
@@ -51,11 +58,51 @@ export function AccountEditor({ user, canEdit }: AccountEditorProps) {
     }))
   }
 
+  const handleUseCurrentLocation = async () => {
+    if (!canEditHomeLocation || typeof navigator === "undefined" || !navigator.geolocation) {
+      setError("Geolocation is not available in this browser.")
+      return
+    }
+
+    setFetchingHomeLocation(true)
+    setError("")
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        })
+      })
+
+      setFormData((current) => ({
+        ...current,
+        homeLatitude: String(position.coords.latitude),
+        homeLongitude: String(position.coords.longitude),
+      }))
+    } catch (locationError) {
+      setError(locationError instanceof Error ? locationError.message : "Unable to fetch location.")
+    } finally {
+      setFetchingHomeLocation(false)
+    }
+  }
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     if (!canSubmit) {
       return
+    }
+
+    if (user.role === "employee") {
+      const homeLatitude = String(formData.homeLatitude ?? "").trim()
+      const homeLongitude = String(formData.homeLongitude ?? "").trim()
+
+      if (!homeLatitude || !homeLongitude) {
+        setError("Home latitude and longitude are required for employees.")
+        return
+      }
     }
 
     setSaving(true)
@@ -76,6 +123,8 @@ export function AccountEditor({ user, canEdit }: AccountEditorProps) {
           region: formData.region,
           employeeRole: formData.employeeRole,
           jobLocation: formData.jobLocation,
+          homeLatitude: formData.homeLatitude,
+          homeLongitude: formData.homeLongitude,
           source: formData.source,
           status: formData.isActive ? "active" : "inactive",
           isActive: formData.isActive,
@@ -102,14 +151,16 @@ export function AccountEditor({ user, canEdit }: AccountEditorProps) {
       <CardHeader className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <CardTitle className="text-lg">Account Details</CardTitle>
-          <Badge variant={canEdit ? "default" : "secondary"} className="rounded-full">
-            {canEdit ? "Admin editable" : "Read only"}
+          <Badge variant={canEdit || canEmployeeSelfEdit ? "default" : "secondary"} className="rounded-full">
+            {canEdit ? "Admin editable" : canEmployeeSelfEdit ? "Home editable" : "Read only"}
           </Badge>
         </div>
         <CardDescription>
           {canEdit
             ? "Update your profile information. Changes are saved through the admin user API."
-            : "This profile can be viewed by everyone, but only admins can change details."}
+            : canEmployeeSelfEdit
+              ? "Employees can update their home location here so remote attendance can be validated."
+              : "This profile can be viewed by everyone, but only admins can change details."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -204,6 +255,47 @@ export function AccountEditor({ user, canEdit }: AccountEditorProps) {
               </select>
             </div>
           </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="account-home-latitude">Home latitude</Label>
+              <Input
+                id="account-home-latitude"
+                type="number"
+                step="any"
+                value={formData.homeLatitude}
+                onChange={(event) => handleChange("homeLatitude", event.target.value)}
+                disabled={!canEditHomeLocation}
+                className="bg-input text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="account-home-longitude">Home longitude</Label>
+              <Input
+                id="account-home-longitude"
+                type="number"
+                step="any"
+                value={formData.homeLongitude}
+                onChange={(event) => handleChange("homeLongitude", event.target.value)}
+                disabled={!canEditHomeLocation}
+                className="bg-input text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+          </div>
+
+          {canEditHomeLocation ? (
+            <div className="flex justify-start">
+              <Button type="button" variant="outline" size="sm" onClick={handleUseCurrentLocation} disabled={fetchingHomeLocation}>
+                {fetchingHomeLocation ? "Fetching location..." : "Use current location"}
+              </Button>
+            </div>
+          ) : null}
+
+          {user.role === "employee" && !canEdit ? (
+            <p className="text-xs text-muted-foreground">
+              Home coordinates are used to allow remote attendance within a 3km radius.
+            </p>
+          ) : null}
 
           <div className="grid gap-2">
             <Label htmlFor="account-status">Status</Label>

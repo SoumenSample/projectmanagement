@@ -34,6 +34,23 @@ function SummaryCard({ label, value, hint }) {
   );
 }
 
+function getEmployeeLabel(record) {
+  const name = record?.user?.name || "Unknown employee";
+  const jobLocation = record?.user?.jobLocation;
+
+  if (jobLocation === "remote") {
+    return `${name} (Remote)`;
+  }
+
+  return name;
+}
+
+function formatLocationType(value) {
+  if (!value) return "-";
+  if (value === "outside") return "Outside";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 export default function AttendanceReportPanel({ employees = [] }) {
   const [filters, setFilters] = useState({
     month: defaultMonthKey(),
@@ -259,19 +276,20 @@ export default function AttendanceReportPanel({ employees = [] }) {
                 <th className="px-3 py-2">Check In</th>
                 <th className="px-3 py-2">Check Out</th>
                 <th className="px-3 py-2">Office Distance</th>
-                <th className="px-3 py-2">Office Match</th>
+                <th className="px-3 py-2">Check In Zone</th>
+                <th className="px-3 py-2">Check Out Zone</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-sm text-zinc-500 dark:text-zinc-400">
+                  <td colSpan={8} className="px-3 py-6 text-sm text-zinc-500 dark:text-zinc-400">
                     Loading attendance history...
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-sm text-zinc-500 dark:text-zinc-400">
+                  <td colSpan={8} className="px-3 py-6 text-sm text-zinc-500 dark:text-zinc-400">
                     No attendance records match the selected filters.
                   </td>
                 </tr>
@@ -280,7 +298,7 @@ export default function AttendanceReportPanel({ employees = [] }) {
                   <tr key={record._id} className="border-t border-zinc-200/70 dark:border-zinc-800">
                     <td className="px-3 py-2 text-zinc-950 dark:text-zinc-50">{formatDateKey(record.attendanceDate)}</td>
                     <td className="px-3 py-2 text-zinc-950 dark:text-zinc-50">
-                      <div className="font-medium">{record.user?.name || "Unknown employee"}</div>
+                      <div className="font-medium">{getEmployeeLabel(record)}</div>
                       <div className="text-xs text-zinc-500 dark:text-zinc-400">{record.user?.email || "-"}</div>
                     </td>
                     <td className="px-3 py-2 text-zinc-950 dark:text-zinc-50">{record.status || "-"}</td>
@@ -292,11 +310,10 @@ export default function AttendanceReportPanel({ employees = [] }) {
                         : `${record.officeDistanceMeters} m`}
                     </td>
                     <td className="px-3 py-2 text-zinc-950 dark:text-zinc-50">
-                      {record.checkInWithinOfficeRadius === true || record.checkOutWithinOfficeRadius === true
-                        ? "Within"
-                        : record.checkInWithinOfficeRadius === false || record.checkOutWithinOfficeRadius === false
-                          ? "Outside"
-                          : "-"}
+                      {formatLocationType(record.checkInLocationType)}
+                    </td>
+                    <td className="px-3 py-2 text-zinc-950 dark:text-zinc-50">
+                      {formatLocationType(record.checkOutLocationType)}
                     </td>
                   </tr>
                 ))

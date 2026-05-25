@@ -892,7 +892,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { StatCards } from "./component/stats-card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MoreVertical, Pencil, Trash2, User, Mail, Lock, Phone, Briefcase, Calendar, DollarSign, Tag, Info, ChevronRight, UserPlus } from "lucide-react"
+import { MoreVertical, Pencil, Trash2, User, Mail, Lock, Phone, Briefcase, Calendar, DollarSign, Tag, Info, ChevronRight, UserPlus, MapPin } from "lucide-react"
 
 interface User {
   _id?: string
@@ -907,6 +907,8 @@ interface User {
   phone?: string
   employeeRole?: string
   jobLocation?: string
+  homeLatitude?: number | null
+  homeLongitude?: number | null
   source?: string
   isActive?: boolean
   clientProfile?: any
@@ -978,6 +980,8 @@ export default function UsersPage() {
   const [clientStatus, setClientStatus] = useState("active")
   const [employeeRole, setEmployeeRole] = useState("Staff")
   const [jobLocation, setJobLocation] = useState("office")
+  const [homeLatitude, setHomeLatitude] = useState("")
+  const [homeLongitude, setHomeLongitude] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState("")
 
@@ -992,6 +996,7 @@ export default function UsersPage() {
   const [userEditForm, setUserEditForm] = useState<any>({})
   const [isUserSaving, setIsUserSaving] = useState(false)
   const [userEditError, setUserEditError] = useState("")
+  const [fetchingHomeLocation, setFetchingHomeLocation] = useState(false)
 
   // ── Delete state ────────────────────────────────────────────────────────────
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -1012,7 +1017,7 @@ export default function UsersPage() {
     setName(""); setEmail(""); setPassword(""); setRole("client")
     setFinalBudget(""); setProjectName(""); setProjectDescription("")
     setPhone(""); setAge(""); setRegion(""); setValidFrom(""); setValidTo("")
-    setSource(""); setClientStatus("active"); setEmployeeRole("Staff"); setJobLocation("office")
+    setSource(""); setClientStatus("active"); setEmployeeRole("Staff"); setJobLocation("office"); setHomeLatitude(""); setHomeLongitude("")
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -1029,6 +1034,7 @@ export default function UsersPage() {
     if (role === "employee") {
       if (!employeeRole.trim()) { setError("Employee role is required."); return }
       if (!jobLocation.trim()) { setError("Job location is required."); return }
+      if (!homeLatitude.trim() || !homeLongitude.trim()) { setError("Home latitude and longitude are required for employees."); return }
     }
 
     setIsSubmitting(true)
@@ -1050,6 +1056,8 @@ export default function UsersPage() {
       if (role === "employee") {
         payload.employeeRole = employeeRole
         payload.jobLocation = jobLocation
+        payload.homeLatitude = homeLatitude
+        payload.homeLongitude = homeLongitude
       }
 
       const response = await fetch("/api/users", {
@@ -1103,6 +1111,48 @@ export default function UsersPage() {
     }
   }
 
+  const handleUseCurrentLocation = async (mode: "create" | "edit") => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setError("Geolocation is not available in this browser.")
+      return
+    }
+
+    setFetchingHomeLocation(true)
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        })
+      })
+
+      const nextLatitude = String(position.coords.latitude)
+      const nextLongitude = String(position.coords.longitude)
+
+      if (mode === "create") {
+        setHomeLatitude(nextLatitude)
+        setHomeLongitude(nextLongitude)
+      } else {
+        setUserEditForm((current: any) => ({
+          ...current,
+          homeLatitude: nextLatitude,
+          homeLongitude: nextLongitude,
+        }))
+      }
+    } catch (locationError: any) {
+      const message = locationError instanceof Error ? locationError.message : "Unable to fetch location."
+      if (mode === "create") {
+        setError(message)
+      } else {
+        setUserEditError(message)
+      }
+    } finally {
+      setFetchingHomeLocation(false)
+    }
+  }
+
   // ── Edit user ────────────────────────────────────────────────────────────────
   const handleEditUser = (user: User) => {
     setEditingUser(user)
@@ -1126,6 +1176,8 @@ export default function UsersPage() {
       phone: user.phone || "",
       employeeRole: user.employeeRole || "Staff",
       jobLocation: resolvedJobLocation,
+      homeLatitude: user.homeLatitude === null || user.homeLatitude === undefined ? "" : String(user.homeLatitude),
+      homeLongitude: user.homeLongitude === null || user.homeLongitude === undefined ? "" : String(user.homeLongitude),
       source: user.source || "manual-admin",
       status: resolvedStatus,
     })
@@ -1151,6 +1203,13 @@ export default function UsersPage() {
       // caused them to be written to the wrong document on the backend.
       const isEmployee = editingUser?.role === "employee"
 
+      if (isEmployee) {
+        if (!String(userEditForm.homeLatitude ?? "").trim() || !String(userEditForm.homeLongitude ?? "").trim()) {
+          setUserEditError("Home latitude and longitude are required for employees.")
+          return
+        }
+      }
+
       const patchPayload: any = {
         userId: editingUser?._id || editingUser?.id,
         name: userEditForm.name,
@@ -1164,6 +1223,8 @@ export default function UsersPage() {
         // Always send explicit strings so the backend receives a valid value
         patchPayload.jobLocation = String(userEditForm.jobLocation || "office").trim().toLowerCase()
         patchPayload.employeeRole = userEditForm.employeeRole
+        patchPayload.homeLatitude = String(userEditForm.homeLatitude || "").trim()
+        patchPayload.homeLongitude = String(userEditForm.homeLongitude || "").trim()
       }
 
       const response = await fetch("/api/users", {
@@ -1369,6 +1430,21 @@ export default function UsersPage() {
                         <option value="remote">Remote</option>
                       </select>
                     </FieldGroup>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FieldGroup label="Home Latitude" icon={MapPin} hint="Used for remote attendance within 3km">
+                        <Input className={inputCls} type="number" step="any" placeholder="e.g. 25.2048" value={homeLatitude} onChange={(e) => setHomeLatitude(e.target.value)} required />
+                      </FieldGroup>
+                      <FieldGroup label="Home Longitude" icon={MapPin} hint="Used for remote attendance within 3km">
+                        <Input className={inputCls} type="number" step="any" placeholder="e.g. 55.2708" value={homeLongitude} onChange={(e) => setHomeLongitude(e.target.value)} required />
+                      </FieldGroup>
+                    </div>
+
+                    <div className="flex justify-start">
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleUseCurrentLocation("create")} disabled={fetchingHomeLocation}>
+                        {fetchingHomeLocation ? "Fetching location..." : "Use current location"}
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -1577,6 +1653,32 @@ export default function UsersPage() {
                         <option value="office">Office</option>
                         <option value="remote">Remote</option>
                       </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Home Latitude</Label>
+                      <Input
+                        type="number"
+                        step="any"
+                        value={userEditForm.homeLatitude ?? ""}
+                        onChange={(e) => setUserEditForm({ ...userEditForm, homeLatitude: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Home Longitude</Label>
+                      <Input
+                        type="number"
+                        step="any"
+                        value={userEditForm.homeLongitude ?? ""}
+                        onChange={(e) => setUserEditForm({ ...userEditForm, homeLongitude: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-start">
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleUseCurrentLocation("edit")} disabled={fetchingHomeLocation}>
+                        {fetchingHomeLocation ? "Fetching location..." : "Use current location"}
+                      </Button>
                     </div>
                   </>
                 )}

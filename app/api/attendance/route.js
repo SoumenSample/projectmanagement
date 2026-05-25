@@ -19,9 +19,9 @@ const attendancePayloadSchema = z.object({
 
 const OFFICE_RADIUS_METERS = 3000;
 
-function buildGeofenceError() {
+function buildGeofenceError(message = "Attendance is only allowed within 3km of the office location") {
   return Response.json(
-    { error: "Attendance is only allowed within 3km of the office location" },
+    { error: message },
     { status: 403 }
   );
 }
@@ -96,6 +96,66 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
   return Math.round(earthRadius * c);
 }
 
+function evaluatePunchZone({ jobLocation, officeDistanceMeters, homeDistanceMeters, hasHomeLocation }) {
+  const officeWithinRadius = typeof officeDistanceMeters === "number" && officeDistanceMeters <= OFFICE_RADIUS_METERS;
+  const homeWithinRadius = typeof homeDistanceMeters === "number" && homeDistanceMeters <= OFFICE_RADIUS_METERS;
+
+  if (jobLocation === "remote") {
+    if (!hasHomeLocation) {
+      return {
+        allowed: false,
+        matchedLocationType: null,
+        officeWithinRadius,
+        homeWithinRadius,
+        error: "Remote employees must have a home location before attendance can be marked",
+      };
+    }
+
+    if (officeWithinRadius || homeWithinRadius) {
+      if (officeWithinRadius && homeWithinRadius) {
+        return {
+          allowed: true,
+          matchedLocationType: officeDistanceMeters <= homeDistanceMeters ? "office" : "home",
+          officeWithinRadius,
+          homeWithinRadius,
+        };
+      }
+
+      return {
+        allowed: true,
+        matchedLocationType: officeWithinRadius ? "office" : "home",
+        officeWithinRadius,
+        homeWithinRadius,
+      };
+    }
+
+    return {
+      allowed: false,
+      matchedLocationType: "outside",
+      officeWithinRadius,
+      homeWithinRadius,
+      error: "Attendance is only allowed within 3km of the office or the employee home location",
+    };
+  }
+
+  if (officeWithinRadius) {
+    return {
+      allowed: true,
+      matchedLocationType: "office",
+      officeWithinRadius,
+      homeWithinRadius: null,
+    };
+  }
+
+  return {
+    allowed: false,
+    matchedLocationType: "outside",
+    officeWithinRadius,
+    homeWithinRadius: null,
+    error: "Attendance is only allowed within 3km of the office location",
+  };
+}
+
 function buildLocationPayload({ latitude, longitude, accuracy }) {
   return {
     latitude,
@@ -119,6 +179,9 @@ function serializeUser(user) {
     name: user.name || "",
     email: user.email || "",
     role: user.role || "",
+    jobLocation: user.jobLocation || null,
+    homeLatitude: typeof user.homeLatitude === "number" ? user.homeLatitude : null,
+    homeLongitude: typeof user.homeLongitude === "number" ? user.homeLongitude : null,
   };
 }
 
@@ -245,10 +308,10 @@ export async function GET(request) {
     }
 
     const [todayAttendance, historyAttendance] = await Promise.all([
-      Attendance.findOne({ ...query, attendanceDate: todayKey }).populate("user", "name email role").lean(),
+      Attendance.findOne({ ...query, attendanceDate: todayKey }).populate("user", "name email role jobLocation homeLatitude homeLongitude").lean(),
       Attendance.find(query)
         .sort({ attendanceDate: -1, updatedAt: -1 })
-        .populate("user", "name email role")
+        .populate("user", "name email role jobLocation homeLatitude homeLongitude")
         .lean(),
     ]);
 
@@ -294,7 +357,7 @@ export async function POST(request) {
 
     await connectToDatabase();
 
-    const user = await User.findById(session.user.id).select("role isActive").lean();
+    const user = await User.findById(session.user.id).select("role isActive jobLocation homeLatitude homeLongitude").lean();
 
     if (!user || !user.isActive || user.role !== "employee") {
       return Response.json({ error: "Employee account not found" }, { status: 404 });
@@ -303,23 +366,45 @@ export async function POST(request) {
     const todayKey = getAttendanceDateKey();
     const now = new Date();
     const { officeLocation, officeRadiusMeters } = await loadOfficeSettings();
+    const isRemoteEmployee = user.jobLocation === "remote";
     const hasOfficeLocation =
       officeLocation && officeLocation.latitude !== null && officeLocation.longitude !== null;
+    const hasHomeLocation =
+      typeof user.homeLatitude === "number" && typeof user.homeLongitude === "number";
 
-    if (!hasOfficeLocation) {
+    if (isRemoteEmployee && !hasHomeLocation) {
+      return buildGeofenceError("Remote employees must have a home location before attendance can be marked");
+    }
+
+    if (!hasOfficeLocation && !isRemoteEmployee) {
       return buildGeofenceError();
     }
 
-    const distance = distanceMeters(
-      parsed.data.latitude,
-      parsed.data.longitude,
-      officeLocation.latitude,
-      officeLocation.longitude
-    );
-    const withinOfficeRadius = distance !== null && distance <= officeRadiusMeters;
+    const officeDistance = hasOfficeLocation
+      ? distanceMeters(
+          parsed.data.latitude,
+          parsed.data.longitude,
+          officeLocation.latitude,
+          officeLocation.longitude
+        )
+      : null;
+    const homeDistance = hasHomeLocation
+      ? distanceMeters(
+          parsed.data.latitude,
+          parsed.data.longitude,
+          user.homeLatitude,
+          user.homeLongitude,
+        )
+      : null;
+    const zoneCheck = evaluatePunchZone({
+      jobLocation: user.jobLocation,
+      officeDistanceMeters: officeDistance,
+      homeDistanceMeters: homeDistance,
+      hasHomeLocation,
+    });
 
-    if (!withinOfficeRadius) {
-      return buildGeofenceError();
+    if (!zoneCheck.allowed) {
+      return buildGeofenceError(zoneCheck.error);
     }
 
     let attendance = await Attendance.findOne({ user: session.user.id, attendanceDate: todayKey });
@@ -348,10 +433,14 @@ export async function POST(request) {
       attendance.checkInAt = now;
       attendance.checkInLocation = buildLocationPayload(parsed.data);
       attendance.officeLocation = officeLocation || { latitude: null, longitude: null };
-      attendance.officeDistanceMeters = distance;
-      attendance.checkInWithinOfficeRadius = withinOfficeRadius;
+      attendance.officeDistanceMeters = officeDistance;
+      attendance.checkInWithinOfficeRadius = zoneCheck.officeWithinRadius;
+      attendance.checkInLocationType = zoneCheck.matchedLocationType;
+      attendance.checkInHomeDistanceMeters = homeDistance;
       attendance.checkOutAt = null;
       attendance.checkOutLocation = null;
+      attendance.checkOutLocationType = null;
+      attendance.checkOutHomeDistanceMeters = null;
 
       await attendance.save();
     } else {
@@ -367,13 +456,15 @@ export async function POST(request) {
       attendance.checkOutAt = now;
       attendance.checkOutLocation = buildLocationPayload(parsed.data);
       attendance.officeLocation = officeLocation || { latitude: null, longitude: null };
-      attendance.officeDistanceMeters = distance;
-      attendance.checkOutWithinOfficeRadius = withinOfficeRadius;
+      attendance.officeDistanceMeters = officeDistance;
+      attendance.checkOutWithinOfficeRadius = zoneCheck.officeWithinRadius;
+      attendance.checkOutLocationType = zoneCheck.matchedLocationType;
+      attendance.checkOutHomeDistanceMeters = homeDistance;
 
       await attendance.save();
     }
 
-    const savedAttendance = await Attendance.findById(attendance._id).populate("user", "name email role").lean();
+    const savedAttendance = await Attendance.findById(attendance._id).populate("user", "name email role jobLocation homeLatitude homeLongitude").lean();
 
     return Response.json({
       attendance: serializeAttendance(savedAttendance),

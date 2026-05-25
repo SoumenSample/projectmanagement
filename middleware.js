@@ -40,12 +40,13 @@ export async function middleware(request) {
 
   const isUsersApi = pathname.startsWith("/api/users");
   const isUsersListApi = pathname === "/api/users/list";
+  const isUsersPatch = isUsersApi && request.method === "PATCH";
 
   if (isUsersApi && !token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (isUsersApi && !isUsersListApi && token?.role !== "admin") {
+  if (isUsersApi && !isUsersListApi && !isUsersPatch && token?.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

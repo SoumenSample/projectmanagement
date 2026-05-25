@@ -566,7 +566,42 @@ const createUserSchema = z.object({
   status: z.enum(["active", "inactive"]).optional().default("active"),
   employeeRole: z.enum(["Manager", "HR", "Customer Agent", "Staff"]).optional(),
   jobLocation: z.enum(["office", "remote"]).optional(),
+  homeLatitude: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined;
+      }
+
+      const numericValue = typeof value === "string" ? Number(value) : value;
+      return Number.isFinite(numericValue) ? numericValue : value;
+    },
+    z.number().min(-90).max(90).optional(),
+  ),
+  homeLongitude: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined;
+      }
+
+      const numericValue = typeof value === "string" ? Number(value) : value;
+      return Number.isFinite(numericValue) ? numericValue : value;
+    },
+    z.number().min(-180).max(180).optional(),
+  ),
 });
+
+function normalizeOptionalCoordinate(value, min, max) {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue < min || numericValue > max) {
+    return null;
+  }
+
+  return numericValue;
+}
 
 // ===============================
 // GET USERS
@@ -673,6 +708,23 @@ export async function POST(request) {
           { status: 400 },
         );
       }
+
+      const hasHomeLatitude = typeof parsed.data.homeLatitude === "number";
+      const hasHomeLongitude = typeof parsed.data.homeLongitude === "number";
+
+      if (hasHomeLatitude !== hasHomeLongitude) {
+        return Response.json(
+          { error: "Home latitude and longitude must be provided together" },
+          { status: 400 },
+        );
+      }
+
+      if (parsed.data.jobLocation === "remote" && (!hasHomeLatitude || !hasHomeLongitude)) {
+        return Response.json(
+          { error: "Remote employees must have a home location before they can be created" },
+          { status: 400 },
+        );
+      }
     }
 
     const passwordHash = await bcrypt.hash(parsed.data.password, 12);
@@ -689,6 +741,10 @@ export async function POST(request) {
       source: parsed.data.source?.trim() || "manual-admin",
       employeeRole: parsed.data.employeeRole || null,
       jobLocation: parsed.data.jobLocation || null,
+      homeLatitude:
+        typeof parsed.data.homeLatitude === "number" ? parsed.data.homeLatitude : null,
+      homeLongitude:
+        typeof parsed.data.homeLongitude === "number" ? parsed.data.homeLongitude : null,
     });
 
     let clientProfile = null;
@@ -849,6 +905,8 @@ export async function PATCH(request) {
       isActive,
       jobLocation,
       employeeRole,
+      homeLatitude,
+      homeLongitude,
     } = body;
 
     if (!userId) {
@@ -870,7 +928,9 @@ export async function PATCH(request) {
     const isOwnProfile =
       (sessionUserId && userIdString === sessionUserId) ||
       (sessionUserEmail && userEmailString === sessionUserEmail);
-    if (!isAdmin) {
+    const isEmployeeSelfUpdate = !isAdmin && isOwnProfile && user.role === "employee";
+
+    if (!isAdmin && !isEmployeeSelfUpdate) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -930,6 +990,69 @@ export async function PATCH(request) {
       );
     }
 
+    const nextHomeLatitude = normalizeOptionalCoordinate(homeLatitude, -90, 90);
+    const nextHomeLongitude = normalizeOptionalCoordinate(homeLongitude, -180, 180);
+
+    if (nextHomeLatitude === null || nextHomeLongitude === null) {
+      return Response.json(
+        { error: "Home latitude and longitude must be valid coordinates" },
+        { status: 400 },
+      );
+    }
+
+    if ((nextHomeLatitude !== undefined) !== (nextHomeLongitude !== undefined)) {
+      return Response.json(
+        { error: "Home latitude and longitude must be provided together" },
+        { status: 400 },
+      );
+    }
+
+    if (isEmployeeSelfUpdate) {
+      const selfUpdates = {
+        ...(nextHomeLatitude !== undefined ? { homeLatitude: nextHomeLatitude } : {}),
+        ...(nextHomeLongitude !== undefined ? { homeLongitude: nextHomeLongitude } : {}),
+      };
+
+      if (!Object.keys(selfUpdates).length) {
+        return Response.json(
+          { error: "Home location is required" },
+          { status: 400 },
+        );
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(userId, selfUpdates, {
+        new: true,
+        runValidators: true,
+      }).select("-passwordHash");
+
+      return Response.json(
+        {
+          user: updatedUser?.toObject ? updatedUser.toObject() : updatedUser,
+          message: "User updated successfully",
+        },
+        { status: 200 },
+      );
+    }
+
+    if (user.role === "employee") {
+      const hasHomeLatitude = nextHomeLatitude !== undefined;
+      const hasHomeLongitude = nextHomeLongitude !== undefined;
+
+      if (hasHomeLatitude !== hasHomeLongitude) {
+        return Response.json(
+          { error: "Home latitude and longitude must be provided together" },
+          { status: 400 },
+        );
+      }
+
+      if (nextJobLocation === "remote" && (!hasHomeLatitude || !hasHomeLongitude)) {
+        return Response.json(
+          { error: "Remote employees must have a home location" },
+          { status: 400 },
+        );
+      }
+    }
+
     const updates = {
       ...(typeof name === "string" ? { name: name.trim() } : {}),
       email: nextEmail,
@@ -952,6 +1075,12 @@ export async function PATCH(request) {
       // FIX: only set employeeRole for employee users
       ...(typeof employeeRole === "string" && user.role === "employee"
         ? { employeeRole: employeeRole.trim() }
+        : {}),
+      ...(nextHomeLatitude !== undefined && user.role === "employee"
+        ? { homeLatitude: nextHomeLatitude }
+        : {}),
+      ...(nextHomeLongitude !== undefined && user.role === "employee"
+        ? { homeLongitude: nextHomeLongitude }
         : {}),
       isActive: nextIsActive,
     };
