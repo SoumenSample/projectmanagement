@@ -119,48 +119,38 @@ export function StatCards() {
   ]
 
   useEffect(() => {
-    const loadClients = async () => {
+    const loadLeads = async () => {
       try {
-        const res = await fetch("/api/clients", { cache: "no-store" })
+        const res = await fetch("/api/leads", { cache: "no-store" })
         const data = await res.json()
 
-        const clientsData = Array.isArray(data.clients)
-          ? data.clients
-          : []
+        const leadsData = Array.isArray(data.leads) ? data.leads : []
 
-        setClients(clientsData)
+        setClients(leadsData)
 
-        // ✅ STATS
-        const total = clientsData.length
-        const active = clientsData.filter((c) => c.status === "active").length
-        const converted = clientsData.filter(
-          (c) =>
-            String(c.source || "").toLowerCase() === "lead-conversion"
-        ).length
-        const pending = clientsData.filter((c) => c.status !== "active").length
+        // ✅ STATS (for leads)
+        const total = leadsData.length
+        const converted = leadsData.filter((l) => l.convertedToClient).length
+        const active = leadsData.filter((l) => l.status === "active").length
+        const pending = leadsData.filter((l) => l.status !== "active").length
 
         setStats({ total, active, converted, pending })
 
-        // ✅ SOURCE CHART
+        // ✅ SOURCE CHART (from leads)
         const sourceMap = {}
-        clientsData.forEach((c) => {
-          const key = c.source || "unknown"
+        leadsData.forEach((l) => {
+          const key = l.source || "unknown"
           sourceMap[key] = (sourceMap[key] || 0) + 1
         })
 
         setSourceData(
-          Object.keys(sourceMap).map((key) => ({
-            name: key,
-            value: sourceMap[key],
-          }))
+          Object.keys(sourceMap).map((key) => ({ name: key, value: sourceMap[key] }))
         )
 
-        // ✅ SERVICE CHART
+        // ✅ SERVICE CHART (from leads)
         const serviceMap = {}
-
-        clientsData.forEach((c) => {
-          const services = c.services || []
-
+        leadsData.forEach((l) => {
+          const services = l.services || []
           if (Array.isArray(services)) {
             services.forEach((s) => {
               const key = s || "unknown"
@@ -173,12 +163,8 @@ export function StatCards() {
         })
 
         setServiceData(
-          Object.keys(serviceMap).map((key) => ({
-            name: key,
-            value: serviceMap[key],
-          }))
+          Object.keys(serviceMap).map((key) => ({ name: key, value: serviceMap[key] }))
         )
-
       } catch (err) {
         console.error(err)
       } finally {
@@ -186,7 +172,7 @@ export function StatCards() {
       }
     }
 
-    loadClients()
+    loadLeads()
   }, [])
 
   if (loading) {
@@ -195,12 +181,12 @@ export function StatCards() {
 
   const performanceMetrics = [
     {
-      title: "Total Users",
+      title: "Total Leads",
       current: stats.total,
       icon: Users,
     },
     {
-      title: "Converted Users",
+      title: "Converted Leads",
       current: stats.converted,
       icon: CreditCard,
     },
@@ -236,7 +222,7 @@ export function StatCards() {
          <Card className="">
           <CardContent className="flex flex-col items-center">
             <h3 className="font-semibold mb-2">
-              Clients by Source
+              Leads by Source
             </h3>
 
             <PieChart width={300} height={250}>
@@ -255,7 +241,7 @@ export function StatCards() {
         <Card className="">
           <CardContent className="flex flex-col items-center">
             <h3 className="font-semibold mb-2">
-              Clients by Services
+              Leads by Services
             </h3>
 
             <PieChart width={300} height={250}>

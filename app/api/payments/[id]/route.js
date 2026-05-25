@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import mongoose from "mongoose"
 import Payment from "../../../../lib/models/Payment"
+import Project from "../../../../lib/models/Project"
 
 async function connectDB() {
   if (mongoose.connection.readyState === 1) return
@@ -12,9 +13,21 @@ export async function PUT(req, { params }) {
   await connectDB()
 
   const body = await req.json()
+  let project = null
+
+  if (body.project) {
+    project = await Project.findById(body.project).populate("client", "name email role finalBudget")
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found." }, { status: 404 })
+    }
+  }
 
   const amount = Number(body.amount) || 0
-  const totalFee = Number(body.totalFee) || 0
+  const totalFee = project ? Number(project?.client?.finalBudget ?? project?.finalBudget ?? 0) || 0 : Number(body.totalFee) || 0
+  const clientEmail = project?.client?.email
+    ? String(project.client.email).trim().toLowerCase()
+    : String(body.clientEmail || "").trim().toLowerCase()
 
   if (amount > totalFee) {
     return NextResponse.json(
@@ -27,6 +40,8 @@ export async function PUT(req, { params }) {
     params.id,
     {
       ...body,
+      project: project?._id || body.project || null,
+      clientEmail,
       amount,
       totalFee,
     },

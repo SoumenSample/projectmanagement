@@ -16,7 +16,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, FolderIcon, KanbanSquare, MessageSquareIcon, TicketIcon, UsersIcon, FileTextIcon, ReceiptIcon, WalletCards, Handshake, UserCogIcon, CalendarIcon, BookA } from "lucide-react"
+import { LayoutDashboardIcon, FolderIcon, KanbanSquare, MessageSquareIcon, TicketIcon, UsersIcon, FileTextIcon, ReceiptIcon, WalletCards, Handshake, UserCogIcon, CalendarIcon, BookA, CalendarClock } from "lucide-react"
 
 export function AppSidebar({
   role,
@@ -44,6 +44,13 @@ export function AppSidebar({
         ? "/dashboard/employee/projects"
         : "/dashboard/client/projects"
 
+  const attendancePath =
+    normalizedRole === "admin"
+      ? "/dashboard/admin/attendance"
+      : normalizedRole === "employee"
+        ? "/dashboard/employee/attendance"
+        : null
+
   const navMain = [
     {
       title: "Dashboard",
@@ -55,6 +62,15 @@ export function AppSidebar({
       url: projectsPath,
       icon: <FolderIcon />,
     },
+    ...(attendancePath
+      ? [
+          {
+            title: normalizedRole === "admin" ? "Attendance Report" : "Attendance",
+            url: attendancePath,
+            icon: <CalendarClock />,
+          },
+        ]
+      : []),
     {
       title: "Kanban",
       url: "/dashboard/kanban",
@@ -174,6 +190,7 @@ export function AppSidebar({
             name: user?.name || "User",
             email: user?.email || "",
             avatar: user?.avatar || "/logo2.png",
+            role: normalizedRole,
           }}
         />
         <div className="px-2 pb-2 group-data-[collapsible=icon]:px-0">

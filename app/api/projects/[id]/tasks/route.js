@@ -192,6 +192,7 @@ export async function PATCH(request, { params }) {
       isDone: subtask.isDone,
     })),
   };
+  const wasPreviouslyCompleted = project.status === "completed";
 
   let changeType = "task-updated";
   let summary = `Updated task ${task.title}`;
@@ -223,6 +224,13 @@ export async function PATCH(request, { params }) {
   const { progress } = calculateProjectProgress(project.tasks);
   project.progress = progress;
   project.status = deriveProjectStatus(progress, project.status);
+  const isNowCompleted = project.status === "completed";
+
+  if (!wasPreviouslyCompleted && isNowCompleted) {
+    project.completedAt = new Date();
+  } else if (wasPreviouslyCompleted && !isNowCompleted) {
+    project.completedAt = null;
+  }
   project.updatedBy = session.user.id;
   project.lastActivityAt = new Date();
 
@@ -251,6 +259,34 @@ export async function PATCH(request, { params }) {
         : `${summary} on ${project.title}`;
 
   await broadcastProjectChange(populatedProject, session.user.id, changeType, notificationText);
+
+  if (!wasPreviouslyCompleted && isNowCompleted) {
+    await recordProjectActivity(
+      project._id,
+      session.user.id,
+      "project-completed",
+      `Project completed: ${project.title}`,
+      `Project was marked completed due to task updates.`,
+      { completedAt: project.completedAt }
+    );
+
+    const completionMessage = `Project completed: ${project.title} on ${new Date(project.completedAt).toLocaleString()}`;
+    // notify recipients specifically about completion
+    const recipients = (project.assignedEmployees || []).map((e) => e?._id?.toString?.() || e?.toString?.() || e);
+    const clientId = project.client?._id?.toString?.() || project.client?.toString?.() || project.client;
+    if (clientId) recipients.push(clientId);
+    if (session.user.id) recipients.push(session.user.id);
+
+    await notificationService.createAndEmitNotification({
+      userIds: Array.from(new Set(recipients.filter(Boolean))),
+      type: "project",
+      title: "Project completed",
+      message: completionMessage,
+      text: completionMessage,
+      source: "project",
+      payload: { projectId: project._id?.toString?.() || project._id, completedAt: project.completedAt },
+    });
+  }
 
   return Response.json({ project: populatedProject });
 }

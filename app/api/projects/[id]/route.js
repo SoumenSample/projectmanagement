@@ -90,7 +90,7 @@ function normalizeTasks(tasks = [], existingTasks = []) {
 
 async function populateProject(projectId) {
   return Project.findById(projectId)
-    .populate("client", "name email role")
+    .populate("client", "name email role finalBudget")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
     .populate("updatedBy", "name email role");
@@ -164,7 +164,7 @@ export async function GET(request, { params }) {
   await connectToDatabase();
 
   const project = await Project.findById(id)
-    .populate("client", "name email role")
+    .populate("client", "name email role finalBudget")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
     .populate("updatedBy", "name email role");
@@ -281,6 +281,14 @@ export async function PATCH(request, { params }) {
   const { progress } = calculateProjectProgress(project.tasks || []);
   project.progress = progress;
   project.status = deriveProjectStatus(progress, project.status);
+  const wasPreviouslyCompleted = previousState.status === "completed";
+  const isNowCompleted = project.status === "completed";
+
+  if (!wasPreviouslyCompleted && isNowCompleted) {
+    project.completedAt = new Date();
+  } else if (wasPreviouslyCompleted && !isNowCompleted) {
+    project.completedAt = null;
+  }
   project.updatedBy = session.user.id;
   project.lastActivityAt = new Date();
 
@@ -317,6 +325,39 @@ export async function PATCH(request, { params }) {
     assignmentChanged ? "assignment-updated" : "updated",
     assignmentChanged ? `Project assignment updated: ${project.title}` : `Project updated: ${project.title}`
   );
+
+  // If project just transitioned to completed, record activity and notify recipients
+  if (!wasPreviouslyCompleted && isNowCompleted) {
+    await recordProjectActivity(
+      project._id,
+      session.user.id,
+      "project-completed",
+      `Project completed: ${project.title}`,
+      `Project was marked completed.`,
+      { completedAt: project.completedAt }
+    );
+
+    const completionMessage = `Project completed: ${project.title} on ${new Date(project.completedAt).toLocaleString()}`;
+    await broadcastProjectChange(populatedProject, session.user.id, "completed", completionMessage);
+
+    // Also emit a clear completion notification with an explicit title
+    const recipients = (populatedProject.assignedEmployees || []).map((e) => e?._id?.toString?.() || e?.toString?.() || e);
+    const clientId = populatedProject.client?._id?.toString?.() || populatedProject.client?.toString?.() || populatedProject.client;
+    if (clientId) recipients.push(clientId);
+    if (session.user.id) recipients.push(session.user.id);
+
+    await notificationService.createAndEmitNotification({
+      userIds: Array.from(new Set(recipients.filter(Boolean))),
+      type: "project",
+      title: "Project completed",
+      message: completionMessage,
+      text: completionMessage,
+      route: 
+        "/dashboard/admin/projects",
+      source: "project",
+      payload: { projectId: project._id?.toString?.() || project._id, completedAt: project.completedAt },
+    });
+  }
 
   return Response.json({ project: populatedProject });
 }

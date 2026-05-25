@@ -2,11 +2,10 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { BusinessSettingsEditor } from "@/components/business-settings-editor"
-import { requireAuth } from "@/lib/auth"
+import { requireRole } from "@/lib/auth"
 import { connectToDatabase } from "@/lib/mongodb"
 import BusinessSettings from "@/lib/models/BusinessSettings"
-import { Building2, Globe, Phone, ShieldCheck } from "lucide-react"
-import { redirect } from "next/navigation"
+import { Building2, Globe, MapPin, Phone, ShieldCheck } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -18,23 +17,21 @@ const defaultSettings = {
   email: "",
   website: "",
   address: "",
+  latitude: null,
+  longitude: null,
   tagline: "",
 }
 
 export default async function BusinessSettingsPage() {
-  const session = await requireAuth()
+  const session = await requireRole("admin")
 
   await connectToDatabase()
 
   const businessSettingsModel = BusinessSettings as any
 
   const settingsRecord = await businessSettingsModel.findOne({ scope: "global" })
-    .select("businessName logoUrl gstin phone email website address tagline")
+    .select("businessName logoUrl gstin phone email website address latitude longitude tagline")
     .lean()
-
-  if (!session?.user) {
-    redirect("/login")
-  }
 
   const sessionUser = session.user as { role?: string }
   const canEdit = sessionUser.role === "admin"
@@ -46,8 +43,17 @@ export default async function BusinessSettingsPage() {
     email: settingsRecord?.email || defaultSettings.email,
     website: settingsRecord?.website || defaultSettings.website,
     address: settingsRecord?.address || defaultSettings.address,
+    latitude:
+      typeof settingsRecord?.latitude === "number" ? settingsRecord.latitude : defaultSettings.latitude,
+    longitude:
+      typeof settingsRecord?.longitude === "number" ? settingsRecord.longitude : defaultSettings.longitude,
     tagline: settingsRecord?.tagline || defaultSettings.tagline,
   }
+
+  const coordinateSummary =
+    typeof settings.latitude === "number" && typeof settings.longitude === "number"
+      ? `${settings.latitude.toFixed(6)}, ${settings.longitude.toFixed(6)}`
+      : "Not set"
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.12),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.12),transparent_28%),linear-gradient(to_bottom,hsl(var(--background)),hsl(var(--muted)/0.15))]">
@@ -101,6 +107,13 @@ export default async function BusinessSettingsPage() {
                   <p className="truncate text-sm font-medium text-foreground">{settings.website || "Not set"}</p>
                 </div>
               </div>
+              <div className="flex items-center gap-3 rounded-xl bg-muted/10 p-3 dark:bg-muted/40 sm:col-span-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Location</p>
+                  <p className="text-sm font-medium text-foreground">{coordinateSummary}</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -125,6 +138,11 @@ export default async function BusinessSettingsPage() {
               <div className="flex items-start justify-between gap-4">
                 <span className="text-muted-foreground">Address</span>
                 <span className="max-w-[18rem] text-right font-medium">{settings.address || "Not set"}</span>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">Location</span>
+                <span className="font-medium">{coordinateSummary}</span>
               </div>
               <Separator />
               <div className="flex items-center justify-between gap-4">

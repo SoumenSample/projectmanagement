@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import mongoose from "mongoose"
 import Payment from "../../../lib/models/Payment"
+import Project from "../../../lib/models/Project"
 import User from "@/lib/models/User"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth-options"
@@ -28,9 +29,24 @@ export async function GET(req) {
     ? { clientEmail: email }
     : { clientEmail: session.user.email }
 
-  const payments = await Payment.find(query).sort({ createdAt: -1 })
+  const payments = await Payment.find(query)
+    .sort({ createdAt: -1 })
+    .populate({
+      path: "project",
+      select: "title client",
+      populate: {
+        path: "client",
+        select: "name email role finalBudget",
+      },
+    })
 
   return NextResponse.json({ payments })
+}
+
+function parseProjectBudget(project) {
+  const projectBudget = project?.client?.finalBudget ?? project?.finalBudget ?? ""
+  const parsedBudget = Number(projectBudget)
+  return Number.isFinite(parsedBudget) ? parsedBudget : 0
 }
 
 // POST (create)
@@ -38,9 +54,21 @@ export async function POST(req) {
   await connectDB()
 
   const body = await req.json()
+  let project = null
+
+  if (body.project) {
+    project = await Project.findById(body.project).populate("client", "name email role finalBudget")
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found." }, { status: 404 })
+    }
+  }
 
   const amount = Number(body.amount) || 0
-  const totalFee = Number(body.totalFee) || 0
+  const totalFee = project ? parseProjectBudget(project) : Number(body.totalFee) || 0
+  const clientEmail = project?.client?.email
+    ? String(project.client.email).trim().toLowerCase()
+    : String(body.clientEmail || "").trim().toLowerCase()
 
   if (amount > totalFee) {
     return NextResponse.json(
@@ -51,6 +79,8 @@ export async function POST(req) {
 
   const payment = await Payment.create({
     ...body,
+    project: project?._id || body.project || null,
+    clientEmail,
     amount,
     totalFee,
   })

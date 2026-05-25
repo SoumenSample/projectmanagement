@@ -85,6 +85,7 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
   const [form, setForm] = useState({
     title: "",
     description: "",
+    projectId: "",
     clientEmail: "",
     amount: "",
     totalFee: "",
@@ -92,8 +93,10 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState("")
   const [clients, setClients] = useState([])
+  const [projects, setProjects] = useState([])
   const [clientSearch, setClientSearch] = useState("")
   const [showClientDropdown, setShowClientDropdown] = useState(false)
+  const [showProjectDropdown, setShowProjectDropdown] = useState(false)
   const notify = useNotification()
 
   // Fetch clients when modal opens
@@ -115,6 +118,18 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
     }
   }
 
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch("/api/projects")
+      if (response.ok) {
+        const data = await response.json()
+        setProjects(data.projects || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch projects:", error)
+    }
+  }
+
   useEffect(() => {
     setFormError("")
 
@@ -122,14 +137,53 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
       setForm({
         title: editData.title || "",
         description: editData.description || "",
+        projectId: editData.project?._id || editData.project || "",
         clientEmail: editData.clientEmail || "",
         amount: editData.amount?.toString?.() ?? `${editData.amount ?? ""}`,
         totalFee: editData.totalFee?.toString?.() ?? `${editData.totalFee ?? ""}`,
       })
     } else {
-      setForm({ title: "", description: "", clientEmail: "", amount: "", totalFee: "" })
+      setForm({ title: "", description: "", projectId: "", clientEmail: "", amount: "", totalFee: "" })
     }
   }, [editData, open])
+
+  useEffect(() => {
+    if (open) {
+      fetchProjects()
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!form.projectId) return
+
+    const selectedProject = projects.find((project) => String(project._id) === String(form.projectId))
+    if (!selectedProject) return
+
+    const projectBudget = selectedProject?.client?.finalBudget ?? selectedProject?.finalBudget ?? ""
+    const projectClientEmail = selectedProject?.client?.email || ""
+
+    setForm((current) => ({
+      ...current,
+      clientEmail: projectClientEmail || current.clientEmail,
+      totalFee: projectBudget !== "" ? `${projectBudget}` : current.totalFee,
+    }))
+  }, [form.projectId, projects])
+
+  useEffect(() => {
+    if (!form.projectId || !form.clientEmail) return
+
+    const selectedProject = projects.find((project) => String(project._id) === String(form.projectId))
+    const projectClientEmail = String(selectedProject?.client?.email || "").toLowerCase()
+    const currentClientEmail = String(form.clientEmail || "").toLowerCase()
+
+    if (selectedProject && projectClientEmail && projectClientEmail !== currentClientEmail) {
+      setForm((current) => ({
+        ...current,
+        projectId: "",
+        totalFee: "",
+      }))
+    }
+  }, [form.clientEmail, form.projectId, projects])
 
   // prevent background scroll while modal is open
   useEffect(() => {
@@ -156,6 +210,19 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
     }
   }, [showClientDropdown])
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (e.target.closest(".project-dropdown-container") === null) {
+        setShowProjectDropdown(false)
+      }
+    }
+
+    if (showProjectDropdown) {
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [showProjectDropdown])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError("")
@@ -173,6 +240,9 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
     setSubmitting(true)
     const method = editData ? "PUT" : "POST"
     const url = editData ? `/api/payments/${editData._id}` : "/api/payments"
+    const selectedProject = projects.find((project) => String(project._id) === String(form.projectId))
+    const projectBudget = selectedProject?.client?.finalBudget ?? selectedProject?.finalBudget ?? form.totalFee
+    const projectTotalFee = Number(projectBudget) || 0
 
     try {
       const res = await fetch(url, {
@@ -181,7 +251,8 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
         body: JSON.stringify({
           ...form,
           amount,
-          totalFee,
+          project: form.projectId || null,
+          totalFee: projectTotalFee,
         }),
       })
 
@@ -211,17 +282,24 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
 
   if (!open) return null
 
+  const selectedProject = projects.find((project) => String(project._id) === String(form.projectId))
+  const selectedProjectBudget = selectedProject?.client?.finalBudget ?? selectedProject?.finalBudget ?? ""
+  const normalizedClientEmail = String(form.clientEmail || "").trim().toLowerCase()
+  const filteredProjects = projects.filter((project) => {
+    const projectClientEmail = String(project?.client?.email || "").trim().toLowerCase()
+    return !normalizedClientEmail || projectClientEmail === normalizedClientEmail
+  })
   const balance = (Number(form.totalFee) || 0) - (Number(form.amount) || 0)
   const isAmountInvalid =
     form.amount !== "" && form.totalFee !== "" && Number(form.amount) > Number(form.totalFee)
 
   return (
     <div
-      className="fixed inset-0 z-[11000] flex items-center justify-center p-4"
+      className="fixed inset-0 z-11000 flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) setOpen(false) }}
     >
-      <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden
+      <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-visible
         bg-white dark:bg-zinc-900
         border border-gray-200 dark:border-white/10">
 
@@ -303,6 +381,72 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
             />
           </div>
 
+          {/* Project */}
+          <div className="project-dropdown-container">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5
+              text-gray-500 dark:text-gray-400">
+              Project
+            </label>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowProjectDropdown((current) => !current)}
+                className="flex h-10 w-full items-center justify-between rounded-lg px-3 text-left text-sm outline-none transition-all
+                  bg-gray-50 dark:bg-white/5
+                  border border-gray-200 dark:border-white/10
+                  text-gray-900 dark:text-white
+                  focus:border-gray-400 dark:focus:border-white/30
+                  focus:ring-2 focus:ring-gray-200 dark:focus:ring-white/10"
+              >
+                <span className={form.projectId ? "truncate text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"}>
+                  {selectedProject
+                    ? `${selectedProject.title} - ${selectedProject?.client?.name || selectedProject?.client?.email || "Unassigned client"}${selectedProjectBudget !== "" ? ` (${selectedProjectBudget})` : ""}`
+                    : "Select a project"}
+                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="ml-3 shrink-0 text-gray-400 dark:text-gray-500">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+
+              {showProjectDropdown && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-zinc-900">
+                  {filteredProjects.length > 0 ? filteredProjects.map((project) => {
+                    const budget = project?.client?.finalBudget ?? project?.finalBudget ?? ""
+                    const clientName = project?.client?.name || project?.client?.email || "Unassigned client"
+
+                    return (
+                      <button
+                        key={project._id}
+                        type="button"
+                        onClick={() => {
+                          const projectBudget = project?.client?.finalBudget ?? project?.finalBudget ?? ""
+                          const projectClientEmail = project?.client?.email || ""
+
+                          setForm((current) => ({
+                            ...current,
+                            projectId: String(project._id),
+                            clientEmail: projectClientEmail || current.clientEmail,
+                            totalFee: projectBudget !== "" ? `${projectBudget}` : current.totalFee,
+                          }))
+                          setClientSearch(project?.client?.name ? `${project.client.name} (${projectClientEmail})` : projectClientEmail)
+                          setShowProjectDropdown(false)
+                        }}
+                        className="flex w-full flex-col items-start gap-0.5 border-b border-gray-100 px-3 py-2.5 text-left text-sm last:border-b-0 hover:bg-gray-100 dark:border-white/5 dark:hover:bg-white/10"
+                      >
+                        <span className="font-medium text-gray-900 dark:text-white">{project.title}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{clientName}{budget !== "" ? ` • ${budget}` : ""}</span>
+                      </button>
+                    )
+                  }) : (
+                    <div className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
+                      No projects found for this client.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Client Email */}
           <div className="client-dropdown-container">
             <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5
@@ -352,9 +496,10 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
                         key={client._id}
                         type="button"
                         onClick={() => {
-                          setForm({ ...form, clientEmail: client.email })
+                          setForm({ ...form, clientEmail: client.email, projectId: "", totalFee: "" })
                           setClientSearch(`${client.name} (${client.email})`)
                           setShowClientDropdown(false)
+                          setShowProjectDropdown(false)
                         }}
                         className="w-full text-left px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors border-b border-gray-100 dark:border-white/5 last:border-b-0 text-sm"
                       >
@@ -407,7 +552,7 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5
                 text-gray-500 dark:text-gray-400">
-                Total Fee
+                Project Final Budget
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400 dark:text-gray-500 pointer-events-none">₹</span>
@@ -418,6 +563,7 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
                   value={form.totalFee}
                   onChange={(e) => setForm({ ...form, totalFee: e.target.value })}
                   required
+                  readOnly={Boolean(form.projectId && selectedProjectBudget !== "")}
                   className="w-full h-10 pl-7 pr-3 rounded-lg text-sm outline-none transition-all font-mono
                     bg-gray-50 dark:bg-white/5
                     border border-gray-200 dark:border-white/10
@@ -427,6 +573,11 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
                     focus:ring-2 focus:ring-gray-200 dark:focus:ring-white/10"
                 />
               </div>
+              {form.projectId && selectedProjectBudget !== "" && (
+                <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                  Filled from the selected project.
+                </p>
+              )}
             </div>
           </div>
 

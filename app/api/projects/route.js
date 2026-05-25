@@ -54,7 +54,7 @@ function parseDate(value, fallback = null) {
 
 async function populateProject(projectId) {
   return Project.findById(projectId)
-    .populate("client", "name email role")
+    .populate("client", "name email role finalBudget")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
     .populate("updatedBy", "name email role");
@@ -131,7 +131,7 @@ export async function GET() {
 
   const projects = await Project.find(query)
     .sort({ deadline: 1, updatedAt: -1 })
-    .populate("client", "name email role")
+    .populate("client", "name email role finalBudget")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
     .populate("updatedBy", "name email role")

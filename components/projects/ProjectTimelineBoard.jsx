@@ -78,7 +78,31 @@ function buildTimelineRange(project) {
 
   const startDate = toDate(project.startDate || project.createdAt) || new Date();
   const deadline = toDate(project.deadline) || addDays(startDate, 7);
-  const span = Math.max(7, Math.ceil((deadline.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+
+  // Extend timeline to include any work done after the deadline so those days appear
+  // in the timeline (e.g., tasks completed after the deadline).
+  let endDate = deadline;
+  try {
+    for (const task of project.tasks || []) {
+      if (task?.doneAt) {
+        const d = toDate(task.doneAt);
+        if (d && d > endDate) endDate = d;
+      }
+      for (const sub of task.subtasks || []) {
+        if (sub?.doneAt) {
+          const sd = toDate(sub.doneAt);
+          if (sd && sd > endDate) endDate = sd;
+        }
+      }
+    }
+  } catch (e) {
+    // ignore malformed tasks
+  }
+
+  const span = Math.max(
+    7,
+    Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  );
 
   return {
     start: startDate,
@@ -110,7 +134,6 @@ function buildDailyDoneMap(project, timelineDays, deadlineDate) {
     if (task?.isDone && task?.doneAt) {
       const doneDate = toDate(task.doneAt);
       if (doneDate) {
-        if (deadlineDate && doneDate > deadlineDate && !isSameDay(doneDate, deadlineDate)) continue;
         const key = formatDayKey(doneDate);
         if (validKeys.has(key)) {
           const existing = doneMap.get(key) || [];
@@ -124,7 +147,6 @@ function buildDailyDoneMap(project, timelineDays, deadlineDate) {
       if (!subtask?.isDone || !subtask?.doneAt) continue;
       const doneDate = toDate(subtask.doneAt);
       if (!doneDate) continue;
-      if (deadlineDate && doneDate > deadlineDate && !isSameDay(doneDate, deadlineDate)) continue;
       const key = formatDayKey(doneDate);
       if (!validKeys.has(key)) continue;
       const existing = doneMap.get(key) || [];
@@ -424,6 +446,11 @@ export default function ProjectTimelineBoard({
               <Metric label="Tasks done" value={`${progressSummary.completed}/${progressSummary.total || 0}`} />
               <Metric label="Deadline" value={formatLongDate(toDate(displayProject.deadline) || new Date())} />
             </div>
+            {displayProject?.completedAt ? (
+              <div className="mt-3">
+                <Metric label="Completed" value={formatLongDate(toDate(displayProject.completedAt) || new Date())} />
+              </div>
+            ) : null}
 
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
 
@@ -614,32 +641,30 @@ export default function ProjectTimelineBoard({
                               : "border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-zinc-900/50 text-gray-900 dark:text-white"
                           }`}
                         >
-                          <p
-                            className={`text-[10px] uppercase tracking-[0.18em] ${
-                              isAfterDeadline
-                                ? "text-gray-300 dark:text-white/20"
-                                : "text-gray-500 dark:text-white/45"
-                            }`}
-                          >
-                            Done {formatDay(day)}
-                          </p>
+                              <p
+                                className={`text-[10px] uppercase tracking-[0.18em] ${
+                                  isAfterDeadline
+                                    ? "text-gray-300 dark:text-white/20"
+                                    : "text-gray-500 dark:text-white/45"
+                                }`}
+                              >
+                                Done {formatDay(day)}{isAfterDeadline ? " (after deadline)" : ""}
+                              </p>
 
-                          {!isAfterDeadline && (
-                            doneItems.length ? (
-                              <div className="mt-2 space-y-1.5">
-                                {doneItems.map((item, index) => (
-                                  <div
-                                    key={`${dayKey}-${item.type}-${index}`}
-                                    className="rounded-lg border border-gray-300 dark:border-white/20 bg-white dark:bg-zinc-900/50 px-2 py-1 text-[11px] text-gray-700 dark:text-white/80"
-                                  >
-                                    {item.type === "subtask" ? `${item.parent}: ${item.title}` : item.title}
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="mt-2 text-[11px] text-gray-400 dark:text-white/35">No task done</p>
-                            )
-                          )}
+                              {doneItems.length ? (
+                                <div className="mt-2 space-y-1.5">
+                                  {doneItems.map((item, index) => (
+                                    <div
+                                      key={`${dayKey}-${item.type}-${index}`}
+                                      className="rounded-lg border border-gray-300 dark:border-white/20 bg-white dark:bg-zinc-900/50 px-2 py-1 text-[11px] text-gray-700 dark:text-white/80"
+                                    >
+                                      {item.type === "subtask" ? `${item.parent}: ${item.title}` : item.title}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="mt-2 text-[11px] text-gray-400 dark:text-white/35">No task done</p>
+                              )}
                         </div>
                       );
                     })}

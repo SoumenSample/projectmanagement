@@ -23,7 +23,7 @@ export default async function AccountPage() {
   }
 
   const userRecord = await userModel.findOne({ email: userEmail })
-    .select("name email role phone region source isActive createdAt updatedAt")
+    .select("name email role phone region source isActive employeeRole jobLocation createdAt updatedAt")
     .lean()
 
   if (!userRecord) {
@@ -84,6 +84,20 @@ export default async function AccountPage() {
                   <p className="text-sm font-medium text-foreground">{userRecord.region || "Not set"}</p>
                 </div>
               </div>
+              <div className="flex items-center gap-3 rounded-xl bg-muted/10 dark:bg-muted/40 p-3">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Employee Role</p>
+                  <p className="text-sm font-medium text-foreground">{userRecord.employeeRole || "Not set"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl bg-muted/10 dark:bg-muted/40 p-3">
+                <MapPin className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Job Location</p>
+                  <p className="text-sm font-medium text-foreground">{userRecord.jobLocation === 'office' ? 'Office' : userRecord.jobLocation === 'remote' ? 'Remote' : 'Not set'}</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -106,6 +120,16 @@ export default async function AccountPage() {
               </div>
               <Separator />
               <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">Employee Role</span>
+                <span className="font-medium">{userRecord.employeeRole || "Not set"}</span>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">Job Location</span>
+                <span className="font-medium">{userRecord.jobLocation === 'office' ? 'Office' : userRecord.jobLocation === 'remote' ? 'Remote' : 'Not set'}</span>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between gap-4">
                 <span className="text-muted-foreground">Status</span>
                 <span className={`font-medium ${userRecord.isActive ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                   {userRecord.isActive ? "Active" : "Inactive"}
@@ -123,6 +147,8 @@ export default async function AccountPage() {
               phone: userRecord.phone || "",
               region: userRecord.region || "",
               source: userRecord.source || "",
+              employeeRole: userRecord.employeeRole || "",
+              jobLocation: userRecord.jobLocation || "",
               isActive: Boolean(userRecord.isActive),
             }}
             canEdit={canEdit}

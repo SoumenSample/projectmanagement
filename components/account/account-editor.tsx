@@ -13,6 +13,8 @@ type AccountUser = {
   name: string
   email: string
   role: string
+  employeeRole?: string
+  jobLocation?: string
   phone?: string
   region?: string
   source?: string
@@ -26,12 +28,16 @@ type AccountEditorProps = {
 
 export function AccountEditor({ user, canEdit }: AccountEditorProps) {
   const router = useRouter()
+  const canEditJobLocation = canEdit
+  const canSubmit = canEdit
   const [formData, setFormData] = useState({
     name: user.name || "",
     email: user.email || "",
     phone: user.phone || "",
     region: user.region || "",
     source: user.source || "",
+    employeeRole: (user as any).employeeRole || "",
+    jobLocation: (user as any).jobLocation || "",
     isActive: user.isActive ?? true,
   })
   const [saving, setSaving] = useState(false)
@@ -48,7 +54,7 @@ export function AccountEditor({ user, canEdit }: AccountEditorProps) {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (!canEdit) {
+    if (!canSubmit) {
       return
     }
 
@@ -68,7 +74,10 @@ export function AccountEditor({ user, canEdit }: AccountEditorProps) {
           email: formData.email,
           phone: formData.phone,
           region: formData.region,
+          employeeRole: formData.employeeRole,
+          jobLocation: formData.jobLocation,
           source: formData.source,
+          status: formData.isActive ? "active" : "inactive",
           isActive: formData.isActive,
         }),
       })
@@ -152,6 +161,25 @@ export function AccountEditor({ user, canEdit }: AccountEditorProps) {
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="account-employee-role">Employee role</Label>
+              <select
+                id="account-employee-role"
+                value={formData.employeeRole}
+                onChange={(e) => handleChange("employeeRole", e.target.value)}
+                disabled={!canEdit}
+                className="rounded-md border bg-input px-3 py-2 text-foreground"
+              >
+                <option value="">Not set</option>
+                <option value="Manager">Manager</option>
+                <option value="HR">HR</option>
+                <option value="Customer Agent">Customer Agent</option>
+                <option value="Staff">Staff</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2">
               <Label htmlFor="account-source">Source</Label>
               <Input
                 id="account-source"
@@ -160,6 +188,20 @@ export function AccountEditor({ user, canEdit }: AccountEditorProps) {
                 disabled={!canEdit}
                 className="bg-input text-foreground placeholder:text-muted-foreground"
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="account-job-location">Job location</Label>
+              <select
+                id="account-job-location"
+                value={formData.jobLocation}
+                onChange={(e) => handleChange("jobLocation", e.target.value)}
+                disabled={!canEditJobLocation}
+                className="rounded-md border bg-input px-3 py-2 text-foreground"
+              >
+                <option value="">Not set</option>
+                <option value="office">Office</option>
+                <option value="remote">Remote</option>
+              </select>
             </div>
           </div>
 
@@ -178,7 +220,7 @@ export function AccountEditor({ user, canEdit }: AccountEditorProps) {
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           {message ? <p className="text-sm text-emerald-600 dark:text-emerald-400">{message}</p> : null}
 
-          {canEdit ? (
+          {canSubmit ? (
             <div className="flex justify-end">
               <Button type="submit" disabled={saving}>
                 {saving ? "Saving..." : "Save changes"}

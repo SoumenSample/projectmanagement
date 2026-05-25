@@ -8,6 +8,19 @@ import BusinessSettings from "@/lib/models/BusinessSettings";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const coordinateSchema = (min, max) =>
+  z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) {
+      return null;
+    }
+
+    if (typeof value === "string") {
+      return Number(value.trim());
+    }
+
+    return value;
+  }, z.number().min(min).max(max).nullable().optional().default(null));
+
 const settingsSchema = z.object({
   businessName: z.string().trim().min(1).max(120),
   logoUrl: z.string().trim().max(2048).optional().default(""),
@@ -16,6 +29,8 @@ const settingsSchema = z.object({
   email: z.string().trim().email().or(z.literal("")).optional().default(""),
   website: z.string().trim().max(2048).optional().default(""),
   address: z.string().trim().max(1000).optional().default(""),
+  latitude: coordinateSchema(-90, 90),
+  longitude: coordinateSchema(-180, 180),
   tagline: z.string().trim().max(160).optional().default(""),
 });
 
@@ -28,6 +43,8 @@ const defaultSettings = {
   email: "",
   website: "",
   address: "",
+  latitude: null,
+  longitude: null,
   tagline: "",
 };
 
@@ -36,6 +53,11 @@ export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Only allow admins to view business settings
+    if (session.user.role !== "admin") {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await connectToDatabase();

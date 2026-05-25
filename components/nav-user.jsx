@@ -83,12 +83,15 @@ export function NavUser({
                   Account
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings" className="flex w-full items-center gap-2">
-                  <Settings2Icon />
-                  Business Settings
-                </Link>
-              </DropdownMenuItem>
+
+              {user?.role === "admin" ? (
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/settings" className="flex w-full items-center gap-2">
+                    <Settings2Icon />
+                    Business Settings
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
           </DropdownMenuContent>

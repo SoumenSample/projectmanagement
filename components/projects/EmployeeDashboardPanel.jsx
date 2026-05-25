@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import EmployeeAttendancePanel from "@/components/attendance/EmployeeAttendancePanel";
 import ProjectTimelineBoard from "@/components/projects/ProjectTimelineBoard";
 
 export default function EmployeeDashboardPanel({ projects = [], sessionUserId }) {
@@ -19,12 +20,14 @@ export default function EmployeeDashboardPanel({ projects = [], sessionUserId })
 
   const inProgress = useMemo(() => employeeProjects.find((p) => p.status === "in-progress") || employeeProjects[0] || null, [employeeProjects]);
 
-  useMemo(() => {
+  useEffect(() => {
     if (inProgress) setSelectedProjectId(inProgress._id || inProgress.id || "");
   }, [inProgress]);
 
   return (
     <div className="space-y-6">
+      <EmployeeAttendancePanel />
+
       <div>
         <ProjectTimelineBoard
           role="employee"
