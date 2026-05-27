@@ -28,6 +28,7 @@
     "cmdk": "^1.1.1",
     "cobe": "^2.0.1",
     "date-fns": "^4.1.0",
+    "docx": "^9.7.0",
     "dotenv": "^17.4.2",
     "dotted-map": "^3.1.0",
     "framer-motion": "^12.23.22",

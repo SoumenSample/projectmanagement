@@ -448,6 +448,7 @@ function buildFormFromProject(project) {
     title: project?.title || "",
     description: project?.description || "",
     clientId: project?.client?._id || project?.client?.id || project?.client || "",
+    assignedVendorId: project?.assignedVendor?._id || project?.assignedVendor?.id || project?.assignedVendor || "",
     deadline: project?.deadline ? new Date(project.deadline).toISOString().slice(0, 10) : "",
     priority: project?.priority || "medium",
     status: project?.status || "planning",
@@ -469,6 +470,7 @@ export default function ProjectCreatePanel({
   const employees = useMemo(() => flattenUsers(users, "employee"), [users]);
   const assignableUsers = useMemo(() => flattenUsers(users, "assignable"), [users]);
   const clients = useMemo(() => flattenUsers(users, "client"), [users]);
+  const vendors = useMemo(() => flattenUsers(users, "vendor"), [users]);
 
   const [form, setForm] = useState(() => buildFormFromProject(initialProject));
   const [message, setMessage] = useState("");
@@ -528,6 +530,7 @@ export default function ProjectCreatePanel({
         title: form.title,
         description: form.description,
         clientId: form.clientId || null,
+        assignedVendorId: form.assignedVendorId || null,
         assignedEmployeeIds: selectedEmployeeIds,
         deadline: form.deadline,
         priority: form.priority,
@@ -911,6 +914,22 @@ export default function ProjectCreatePanel({
                   {clients.map((client) => (
                     <option key={client._id} value={client._id}>
                       {client.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="pcf-label">Vendor / Partner</label>
+                <select
+                  value={form.assignedVendorId || ""}
+                  onChange={(e) => setForm((c) => ({ ...c, assignedVendorId: e.target.value }))}
+                  className="pcf-select"
+                >
+                  <option value="">No vendor assigned</option>
+                  {vendors.map((vendor) => (
+                    <option key={vendor._id} value={vendor._id}>
+                      {vendor.name}
                     </option>
                   ))}
                 </select>

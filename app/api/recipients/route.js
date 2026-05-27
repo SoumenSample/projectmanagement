@@ -13,9 +13,9 @@ export async function GET(req) {
     await connectDB()
 
     const { searchParams } = new URL(req.url)
-    const role = searchParams.get("role") // "client" or "employee"
+    const role = searchParams.get("role") // "client", "employee", or "vendor"
 
-    if (!role || !["client", "employee"].includes(role)) {
+    if (!role || !["client", "employee", "vendor"].includes(role)) {
       return NextResponse.json(
         { error: "Invalid role parameter" },
         { status: 400 }

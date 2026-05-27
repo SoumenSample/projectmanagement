@@ -2,6 +2,7 @@ import { Calendar } from "./component/calender"
 
 import { requireAuth } from "@/lib/auth"
 import { connectToDatabase } from "@/lib/mongodb"
+import BusinessSettings from "@/lib/models/BusinessSettings"
 import Event from "@/lib/models/Event"
 import User from "@/lib/models/User"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -46,6 +47,16 @@ export default async function CalendarPage() {
   const userEmail = normalizeValue(session.user.email)
 
   await connectToDatabase()
+  const businessSettingsModel = BusinessSettings as any
+  const businessSettings = await businessSettingsModel.findOne({ scope: "global" })
+    .select("businessName logoUrl")
+    .lean()
+
+  const businessBrand = {
+    businessName: businessSettings?.businessName || "Project Management",
+    logoUrl: businessSettings?.logoUrl || "/logo2.png",
+  }
+
   const currentUserEmail = session.user.email
   const userModel = User as any
     const eventModel = Event as any
@@ -90,6 +101,7 @@ export default async function CalendarPage() {
             email: session.user.email || "",
             avatar: "/logo2.png",
           }}
+          business={businessBrand}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           

@@ -5,9 +5,10 @@ const rolePathMap = {
   admin: "/dashboard/admin",
   client: "/dashboard/client",
   employee: "/dashboard/employee",
+  vendor: "/dashboard/vendor",
 };
 
-const authRoutes = new Set(["/login", "/forgot-password", "/reset-password"]);
+const authRoutes = new Set(["/login", "/forgot-password", "/reset-password", "/schedule"]);
 
 function isProjectRoute(pathname) {
   return pathname.startsWith("/dashboard");
@@ -59,6 +60,10 @@ export async function middleware(request) {
   }
 
   if (pathname.startsWith("/dashboard/employee") && token?.role !== "employee") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  if (pathname.startsWith("/dashboard/vendor") && token?.role !== "vendor") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

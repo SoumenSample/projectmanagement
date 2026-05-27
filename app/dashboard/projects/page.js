@@ -16,5 +16,9 @@ export default async function ProjectsRouterPage() {
     redirect("/dashboard/employee/projects");
   }
 
+  if (session.user.role === "vendor") {
+    redirect("/dashboard/vendor/projects");
+  }
+
   redirect("/dashboard/client/projects");
 }

@@ -675,6 +675,7 @@ const roleNotes = {
   admin:    "Monitor the queue, assign work, and close tickets when the issue is resolved.",
   employee: "Take ownership of open requests, update progress, and collaborate with clients.",
   client:   "Create support requests and follow updates on your own tickets.",
+  vendor:   "Track requests, coordinate with the team, and keep partner work moving.",
 };
 
 function formatUser(user) {
@@ -707,7 +708,7 @@ function resolveProjectTitle(project, projects = []) {
 }
 
 function isClientOrEmployee(role) {
-  return role === "client" || role === "employee";
+  return role === "client" || role === "employee" || role === "vendor";
 }
 
 /* ── Shared input class ── */
@@ -736,6 +737,7 @@ function CreateTicketForm({
   users,
   isAdmin,
   isEmployee,
+  isVendor,
   onSubmit,
   onChange,
 }) {
@@ -803,6 +805,10 @@ function CreateTicketForm({
                 <option className="text-black" key={u._id} value={u._id}>{u.name} ({u.email})</option>
               ))}
             </select>
+          ) : isVendor ? (
+            <div className="flex h-10 items-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-xs text-gray-500 dark:text-gray-400">
+              Vendor tickets cannot be assigned
+            </div>
           ) : (
             <div className="flex h-10 items-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-xs text-gray-500 dark:text-gray-400">
               {isEmployee ? "Auto-owned by you" : "Assigned after review"}
@@ -1025,7 +1031,8 @@ export default function TicketsPage() {
   const isAdmin          = role === "admin";
   const isEmployee       = role === "employee";
   const isClient         = role === "client";
-  const canManageSelected = Boolean(selectedTicket) && (isAdmin || isEmployee);
+  const isVendor         = role === "vendor";
+  const canManageSelected = Boolean(selectedTicket) && (isAdmin || isEmployee || isVendor);
   const wrapperCls       = "grid gap-4 xl:grid-cols-[0.3fr_0.7fr]";
   const selectedTicketProjectTitle = resolveProjectTitle(selectedTicket?.project, projects);
 
@@ -1209,15 +1216,21 @@ export default function TicketsPage() {
                     <option value="high" className="text-black">🔴 High priority</option>
                   </select>
 
-                  <select className={inputCls} value={ticketForm.assignedTo}
-                    onChange={(e) => setTicketForm((c) => ({ ...c, assignedTo: e.target.value }))}>
-                    <option value="" className="text-black">Unassigned</option>
-                    {users.filter((u) => u.role === "employee").map((u) => (
-                      <option key={u._id} value={u._id} className="text-black">
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
+                  {isVendor ? (
+                    <div className="flex h-10 items-center rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-xs text-gray-500 dark:text-gray-400">
+                      Vendor tickets cannot be assigned
+                    </div>
+                  ) : (
+                    <select className={inputCls} value={ticketForm.assignedTo}
+                      onChange={(e) => setTicketForm((c) => ({ ...c, assignedTo: e.target.value }))}>
+                      <option value="" className="text-black">Unassigned</option>
+                      {users.filter((u) => ["admin", "employee", "vendor"].includes(u.role)).map((u) => (
+                        <option key={u._id} value={u._id} className="text-black">
+                          {u.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
@@ -1325,6 +1338,7 @@ export default function TicketsPage() {
                 users={users}
                 isAdmin={isAdmin}
                 isEmployee={isEmployee}
+                isVendor={isVendor}
                 onSubmit={createTicket}
                 onChange={setCreateForm}
               />

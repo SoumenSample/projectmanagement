@@ -10,7 +10,7 @@ export interface CalendarEvent {
   meetingLink?: string
   color: string
   description?: string
-  assignedRoles?: Array<"admin" | "employee" | "client">
+  assignedRoles?: Array<"admin" | "employee" | "client" | "vendor">
   assignedToEmails?: string[]
 }
 

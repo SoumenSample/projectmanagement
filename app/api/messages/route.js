@@ -29,10 +29,12 @@ export async function POST(req) {
     return Response.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Block only client <-> employee direct chats.
+  // Block role combinations that should not chat directly.
   if (
     (sender.role === "client" && receiver.role === "employee") ||
-    (sender.role === "employee" && receiver.role === "client")
+    (sender.role === "employee" && receiver.role === "client") ||
+    (sender.role === "vendor" && !["admin", "vendor"].includes(receiver.role)) ||
+    (receiver.role === "vendor" && !["admin", "vendor"].includes(sender.role))
   ) {
     return Response.json({ error: "Not allowed" }, { status: 403 });
   }

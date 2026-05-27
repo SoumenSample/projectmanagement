@@ -33,7 +33,7 @@ export async function GET() {
 
   if (session.user.role === "admin") {
     tickets = await loadTickets({});
-  } else if (session.user.role === "employee") {
+  } else if (session.user.role === "employee" || session.user.role === "vendor") {
     tickets = await loadTickets({
       $or: [
         { assignedTo: session.user.id },
@@ -57,7 +57,7 @@ export async function POST(req) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!["admin", "employee", "client"].includes(session.user.role)) {
+  if (!["admin", "employee", "client", "vendor"].includes(session.user.role)) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -92,7 +92,7 @@ export async function POST(req) {
     title: title.trim(),
     description: description.trim(),
     priority:
-      session.user.role === "client"
+      session.user.role === "client" || session.user.role === "vendor"
         ? "medium"
         : ["low", "medium", "high"].includes(priority)
           ? priority
@@ -103,6 +103,10 @@ export async function POST(req) {
 
   if (session.user.role === "employee") {
     payload.assignedTo = session.user.id;
+  }
+
+  if (session.user.role === "vendor") {
+    payload.assignedTo = null;
   }
 
   if (session.user.role === "admin" && assignedTo) {

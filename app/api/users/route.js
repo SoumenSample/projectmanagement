@@ -553,7 +553,7 @@ const createUserSchema = z.object({
   name: z.string().min(2).max(80),
   email: z.string().email(),
   password: z.string().min(8),
-  role: z.enum(["client", "employee"]),
+  role: z.enum(["client", "employee", "vendor"]),
   phone: z.string().optional(),
   age: z.coerce.number().int().min(1).max(120).optional(),
   region: z.string().max(120).optional(),

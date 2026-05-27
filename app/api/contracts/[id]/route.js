@@ -73,6 +73,7 @@ export async function PUT(req, { params }) {
     // ✅ Handle both client and employee emails
     if (body.clientEmail !== undefined && body.clientEmail !== null) updateData.clientEmail = body.clientEmail
     if (body.employeeEmail !== undefined && body.employeeEmail !== null) updateData.employeeEmail = body.employeeEmail
+    if (body.vendorEmail !== undefined && body.vendorEmail !== null) updateData.vendorEmail = body.vendorEmail
     if (body.recipientType !== undefined && body.recipientType !== null) updateData.recipientType = body.recipientType
     
     // ✅ Handle date -> signedDate conversion (form sends 'date', DB uses 'signedDate')

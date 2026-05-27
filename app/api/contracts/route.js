@@ -62,7 +62,7 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url)
     const email = searchParams.get("email")
-    const recipientType = searchParams.get("recipientType") // "client", "employee", or null for all
+    const recipientType = searchParams.get("recipientType") // "client", "employee", "vendor", or null for all
 
     let filter = {}
 
@@ -70,6 +70,8 @@ export async function GET(req) {
       // 👉 CLIENT/EMPLOYEE VIEW (filter by their email)
       if (recipientType === "employee") {
         filter.employeeEmail = email.toLowerCase()
+      } else if (recipientType === "vendor") {
+        filter.vendorEmail = email.toLowerCase()
       } else {
         filter.clientEmail = email.toLowerCase()
       }
@@ -84,6 +86,8 @@ export async function GET(req) {
         ]
       } else if (recipientType === "employee") {
         filter.recipientType = "employee"
+      } else if (recipientType === "vendor") {
+        filter.recipientType = "vendor"
       }
     }
     // else: ADMIN VIEW - return all contracts
@@ -98,6 +102,8 @@ export async function GET(req) {
             String(
               contract.recipientType === "employee"
                 ? contract.employeeEmail || ""
+                : contract.recipientType === "vendor"
+                  ? contract.vendorEmail || ""
                 : contract.clientEmail || ""
             )
               .trim()
@@ -120,6 +126,8 @@ export async function GET(req) {
       const recipientEmail = String(
         contract.recipientType === "employee"
           ? contract.employeeEmail || ""
+          : contract.recipientType === "vendor"
+            ? contract.vendorEmail || ""
           : contract.clientEmail || ""
       )
         .trim()
@@ -129,6 +137,8 @@ export async function GET(req) {
 
       if (contract.recipientType === "employee") {
         contract.employeeName = recipientName
+      } else if (contract.recipientType === "vendor") {
+        contract.vendorName = recipientName
       } else {
         contract.clientName = recipientName
       }
@@ -164,7 +174,7 @@ export async function POST(req) {
       )
     }
 
-    if (!body.recipientType || !["client", "employee"].includes(body.recipientType)) {
+    if (!body.recipientType || !["client", "employee", "vendor"].includes(body.recipientType)) {
       return NextResponse.json(
         { error: "Invalid recipient type" },
         { status: 400 }
@@ -210,6 +220,14 @@ export async function POST(req) {
         )
       }
       contractData.employeeEmail = body.employeeEmail.toLowerCase().trim()
+    } else if (body.recipientType === "vendor") {
+      if (!body.vendorEmail) {
+        return NextResponse.json(
+          { error: "Vendor email is required" },
+          { status: 400 }
+        )
+      }
+      contractData.vendorEmail = body.vendorEmail.toLowerCase().trim()
     } else {
       if (!body.clientEmail) {
         return NextResponse.json(
@@ -244,6 +262,8 @@ export async function POST(req) {
       const recipientEmail =
         body.recipientType === "employee"
           ? contractData.employeeEmail
+          : body.recipientType === "vendor"
+            ? contractData.vendorEmail
           : contractData.clientEmail
 
       const recipientUser = recipientEmail
@@ -259,7 +279,12 @@ export async function POST(req) {
           title: "New Contract Issued",
           message: `A new contract has been issued for ${recipientEmail}.`,
           text: `A new contract has been issued for ${recipientEmail}.`,
-          route: body.recipientType === "employee" ? "/dashboard/employee/contracts" : "/dashboard/client/contracts",
+          route:
+            body.recipientType === "employee"
+              ? "/dashboard/employee/contracts"
+              : body.recipientType === "vendor"
+                ? "/dashboard/vendor/contracts"
+                : "/dashboard/client/contracts",
           source: "contract",
           payload: { contractId: newContract._id?.toString?.() || newContract._id },
         })

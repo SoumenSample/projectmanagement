@@ -25,7 +25,12 @@ export async function GET() {
       users = await User.find({ _id: { $ne: current._id } });
     } else if (current.role === "employee") {
       users = await User.find({
-        role: { $in: ["admin", "employee"] },
+        role: { $in: ["admin", "employee", "vendor"] },
+        _id: { $ne: current._id },
+      });
+    } else if (current.role === "vendor") {
+      users = await User.find({
+        role: { $in: ["admin", "vendor"] },
         _id: { $ne: current._id },
       });
     } else {

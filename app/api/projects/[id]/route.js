@@ -34,6 +34,7 @@ const updateProjectSchema = z.object({
   title: z.string().min(2).max(160).optional(),
   description: z.string().max(5000).optional(),
   clientId: z.string().nullable().optional(),
+  assignedVendorId: z.string().nullable().optional(),
   assignedEmployeeIds: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   deadline: z.string().optional(),
@@ -91,6 +92,7 @@ function normalizeTasks(tasks = [], existingTasks = []) {
 async function populateProject(projectId) {
   return Project.findById(projectId)
     .populate("client", "name email role finalBudget")
+    .populate("assignedVendor", "name email role")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
     .populate("updatedBy", "name email role");
@@ -118,8 +120,13 @@ async function broadcastProjectChange(project, actorId, changeType, message) {
   }
 
   const clientId = project.client?._id?.toString?.() || project.client?.toString?.() || project.client;
+  const vendorId = project.assignedVendor?._id?.toString?.() || project.assignedVendor?.toString?.() || project.assignedVendor;
   if (clientId && clientId !== actorId) {
     audience.add(clientId);
+  }
+
+  if (vendorId && vendorId !== actorId) {
+    audience.add(vendorId);
   }
 
   const creatorId = project.createdBy?._id?.toString?.() || project.createdBy?.toString?.() || project.createdBy;
@@ -165,6 +172,7 @@ export async function GET(request, { params }) {
 
   const project = await Project.findById(id)
     .populate("client", "name email role finalBudget")
+    .populate("assignedVendor", "name email role")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
     .populate("updatedBy", "name email role");
@@ -210,6 +218,7 @@ export async function PATCH(request, { params }) {
     deadline: project.deadline,
     assignedEmployeeIds: (project.assignedEmployees || []).map((employee) => employee?._id?.toString?.() || employee?.toString?.() || employee),
     clientId: project.client?._id?.toString?.() || project.client?.toString?.() || project.client,
+    assignedVendorId: project.assignedVendor?._id?.toString?.() || project.assignedVendor?.toString?.() || project.assignedVendor,
   };
 
   if (typeof parsed.data.title === "string") {
@@ -231,6 +240,20 @@ export async function PATCH(request, { params }) {
       project.client = client._id;
     } else {
       project.client = null;
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(parsed.data, "assignedVendorId")) {
+    if (parsed.data.assignedVendorId) {
+      const vendor = await User.findById(parsed.data.assignedVendorId);
+
+      if (!vendor || vendor.role !== "vendor") {
+        return Response.json({ error: "Vendor not found" }, { status: 400 });
+      }
+
+      project.assignedVendor = vendor._id;
+    } else {
+      project.assignedVendor = null;
     }
   }
 
@@ -294,10 +317,12 @@ export async function PATCH(request, { params }) {
 
   const nextAssignedEmployeeIds = (project.assignedEmployees || []).map((employee) => employee?._id?.toString?.() || employee?.toString?.() || employee);
   const nextClientId = project.client?._id?.toString?.() || project.client?.toString?.() || project.client;
+  const nextVendorId = project.assignedVendor?._id?.toString?.() || project.assignedVendor?.toString?.() || project.assignedVendor;
 
   const assignmentChanged =
     JSON.stringify(previousState.assignedEmployeeIds.sort()) !== JSON.stringify(nextAssignedEmployeeIds.sort()) ||
-    String(previousState.clientId || "") !== String(nextClientId || "");
+    String(previousState.clientId || "") !== String(nextClientId || "") ||
+    String(previousState.assignedVendorId || "") !== String(nextVendorId || "");
 
   await project.save();
 
@@ -343,7 +368,9 @@ export async function PATCH(request, { params }) {
     // Also emit a clear completion notification with an explicit title
     const recipients = (populatedProject.assignedEmployees || []).map((e) => e?._id?.toString?.() || e?.toString?.() || e);
     const clientId = populatedProject.client?._id?.toString?.() || populatedProject.client?.toString?.() || populatedProject.client;
+    const vendorId = populatedProject.assignedVendor?._id?.toString?.() || populatedProject.assignedVendor?.toString?.() || populatedProject.assignedVendor;
     if (clientId) recipients.push(clientId);
+    if (vendorId) recipients.push(vendorId);
     if (session.user.id) recipients.push(session.user.id);
 
     await notificationService.createAndEmitNotification({
@@ -380,8 +407,9 @@ export async function DELETE(request, { params }) {
 
   const assignedEmployeeIds = (project.assignedEmployees || []).map((employee) => employee?._id?.toString?.() || employee?.toString?.() || employee);
   const clientId = project.client?._id?.toString?.() || project.client?.toString?.() || project.client;
+  const vendorId = project.assignedVendor?._id?.toString?.() || project.assignedVendor?.toString?.() || project.assignedVendor;
   const creatorId = project.createdBy?._id?.toString?.() || project.createdBy?.toString?.() || project.createdBy;
-  const recipients = Array.from(new Set([creatorId, clientId, ...assignedEmployeeIds, session.user.id].filter(Boolean)));
+  const recipients = Array.from(new Set([creatorId, clientId, vendorId, ...assignedEmployeeIds, session.user.id].filter(Boolean)));
 
   if (recipients.length) {
     await notificationService.createAndEmitNotification({

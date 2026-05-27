@@ -14,5 +14,9 @@ export default async function DashboardIndexPage() {
     redirect("/dashboard/employee");
   }
 
+  if (session.user.role === "vendor") {
+    redirect("/dashboard/vendor");
+  }
+
   redirect("/dashboard/client");
 }

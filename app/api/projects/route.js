@@ -34,6 +34,7 @@ const createProjectSchema = z.object({
   title: z.string().min(2).max(160),
   description: z.string().max(5000).optional().default(""),
   clientId: z.string().optional().nullable(),
+  assignedVendorId: z.string().optional().nullable(),
   assignedEmployeeIds: z.array(z.string()).optional().default([]),
   tags: z.array(z.string()).optional().default([]),
   startDate: z.string().optional(),
@@ -55,6 +56,7 @@ function parseDate(value, fallback = null) {
 async function populateProject(projectId) {
   return Project.findById(projectId)
     .populate("client", "name email role finalBudget")
+    .populate("assignedVendor", "name email role")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
     .populate("updatedBy", "name email role");
@@ -132,6 +134,7 @@ export async function GET() {
   const projects = await Project.find(query)
     .sort({ deadline: 1, updatedAt: -1 })
     .populate("client", "name email role finalBudget")
+    .populate("assignedVendor", "name email role")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
     .populate("updatedBy", "name email role")
@@ -157,6 +160,7 @@ export async function POST(request) {
   await connectToDatabase();
 
   const clientId = parsed.data.clientId?.trim() || null;
+  const vendorId = parsed.data.assignedVendorId?.trim() || null;
   let assignedEmployeeIds = normalizeListValues(parsed.data.assignedEmployeeIds);
   const tags = normalizeListValues(parsed.data.tags);
   const deadline = parseDate(parsed.data.deadline);
@@ -172,6 +176,15 @@ export async function POST(request) {
 
     if (!client || client.role !== "client") {
       return Response.json({ error: "Client not found" }, { status: 400 });
+    }
+  }
+
+  let vendor = null;
+  if (vendorId) {
+    vendor = await User.findById(vendorId);
+
+    if (!vendor || vendor.role !== "vendor") {
+      return Response.json({ error: "Vendor not found" }, { status: 400 });
     }
   }
 
@@ -204,6 +217,7 @@ export async function POST(request) {
     title: parsed.data.title.trim(),
     description: parsed.data.description?.trim?.() || "",
     client: client?._id || null,
+    assignedVendor: vendor?._id || null,
     assignedEmployees: normalizedEmployeeIds,
     tags,
     startDate,

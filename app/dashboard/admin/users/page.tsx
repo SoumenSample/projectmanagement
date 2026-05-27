@@ -1287,7 +1287,7 @@ export default function UsersPage() {
 
               {/* Role pill toggle */}
               <div className="ml-auto flex items-center gap-1 rounded-lg border border-border/70 bg-background p-1">
-                {["client", "employee"].map((r) => (
+                {["client", "employee", "vendor"].map((r) => (
                   <button
                     key={r}
                     type="button"
@@ -1298,7 +1298,7 @@ export default function UsersPage() {
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {r}
+                    {r === "vendor" ? "Partner/Vendor" : r}
                   </button>
                 ))}
               </div>
@@ -1473,7 +1473,7 @@ export default function UsersPage() {
                     ) : (
                       <>
                         <UserPlus className="h-4 w-4" />
-                        Create {role === "client" ? "Client" : "Employee"}
+                        Create {role === "client" ? "Client" : role === "employee" ? "Employee" : "Partner/Vendor"}
                         <ChevronRight className="h-4 w-4 ml-auto opacity-60" />
                       </>
                     )}
@@ -1505,6 +1505,7 @@ export default function UsersPage() {
                     <option value="all">All users</option>
                     <option value="client">Client</option>
                     <option value="employee">Employee</option>
+                    <option value="vendor">Partner/Vendor</option>
                   </select>
                 </div>
                 <table className="w-full text-left text-sm">

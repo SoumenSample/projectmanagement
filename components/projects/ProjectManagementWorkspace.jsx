@@ -298,12 +298,26 @@ export default function ProjectManagementWorkspace({ role, sessionUserId, users 
   const [editingProject, setEditingProject] = useState(null);
   const [selectedProjectId, setSelectedProjectId] = useState("");
 
+  async function parseResponseBody(response) {
+    const text = await response.text();
+
+    if (!text) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { error: text };
+    }
+  }
+
   async function loadProjects() {
     try {
       setLoadingProjects(true);
       setProjectError("");
       const response = await fetch("/api/projects", { cache: "no-store" });
-      const data = await response.json();
+      const data = await parseResponseBody(response);
       if (!response.ok) throw new Error(data.error || "Failed to load projects");
       const nextProjects = data.projects || [];
       setProjects(nextProjects);
@@ -512,7 +526,7 @@ export default function ProjectManagementWorkspace({ role, sessionUserId, users 
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">Project</p>
                       <h3 className="text-base font-bold text-gray-900 dark:text-white leading-snug truncate">{project.title}</h3>
                     </div>
-                    <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusCls}`}>
+                    <span className={`flex-none rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusCls}`}>
                       {project.status}
                     </span>
                   </div>
@@ -586,8 +600,8 @@ function ProjectModal({ children, onClose }) {
 
   const modal = (
     <div
-      className="fixed inset-0 z-[11000] flex items-start justify-center overflow-y-auto px-4 py-8"
-      style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+      className="fixed inset-0 flex items-start justify-center overflow-y-auto px-4 py-8"
+      style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)", zIndex: 11000 }}
     >
       <button
         type="button"

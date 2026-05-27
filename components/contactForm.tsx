@@ -13,6 +13,7 @@ export default function ContractForm({ open, setOpen, onSuccess, initialData = n
     reference: "",
     clientEmail: "",
     employeeEmail: "",
+    vendorEmail: "",
     recipientType: initialRecipientType,
   })
 
@@ -30,6 +31,7 @@ export default function ContractForm({ open, setOpen, onSuccess, initialData = n
         reference: initialData.reference || "",
         clientEmail: initialData.clientEmail || "",
         employeeEmail: initialData.employeeEmail || "",
+        vendorEmail: initialData.vendorEmail || "",
         recipientType: initialData.recipientType || "client",
       })
     } else {
@@ -41,6 +43,7 @@ export default function ContractForm({ open, setOpen, onSuccess, initialData = n
         reference: "",
         clientEmail: "",
         employeeEmail: "",
+        vendorEmail: "",
         recipientType: initialRecipientType,
       })
     }
@@ -70,10 +73,14 @@ export default function ContractForm({ open, setOpen, onSuccess, initialData = n
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    const recipientEmail = form.recipientType === "employee" ? form.employeeEmail : form.clientEmail
+    const recipientEmail = form.recipientType === "employee"
+      ? form.employeeEmail
+      : form.recipientType === "vendor"
+        ? form.vendorEmail
+        : form.clientEmail
 
     if (!recipientEmail) {
-      alert(`Please select a ${form.recipientType === "employee" ? "employee" : "client"}`)
+      alert(`Please select a ${form.recipientType === "employee" ? "employee" : form.recipientType === "vendor" ? "vendor" : "client"}`)
       return
     }
 
@@ -118,6 +125,8 @@ export default function ContractForm({ open, setOpen, onSuccess, initialData = n
 
       if (form.recipientType === "employee") {
         requestBody.employeeEmail = form.employeeEmail.toLowerCase().trim()
+      } else if (form.recipientType === "vendor") {
+        requestBody.vendorEmail = form.vendorEmail.toLowerCase().trim()
       } else {
         requestBody.clientEmail = form.clientEmail.toLowerCase().trim()
       }
@@ -158,7 +167,11 @@ export default function ContractForm({ open, setOpen, onSuccess, initialData = n
   }
 
   const isEditing = !!initialData
-  const currentRecipientEmail = form.recipientType === "employee" ? form.employeeEmail : form.clientEmail
+  const currentRecipientEmail = form.recipientType === "employee"
+    ? form.employeeEmail
+    : form.recipientType === "vendor"
+      ? form.vendorEmail
+      : form.clientEmail
   const selectedRecipient = recipients.find(r => r.email === currentRecipientEmail)
 
   return (
@@ -183,7 +196,7 @@ export default function ContractForm({ open, setOpen, onSuccess, initialData = n
               <button
                 type="button"
                 onClick={() => {
-                  setForm({ ...form, recipientType: "client", clientEmail: "", employeeEmail: "" })
+                  setForm({ ...form, recipientType: "client", clientEmail: "", employeeEmail: "", vendorEmail: "" })
                 }}
                 className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition ${
                   form.recipientType === "client"
@@ -196,7 +209,7 @@ export default function ContractForm({ open, setOpen, onSuccess, initialData = n
               <button
                 type="button"
                 onClick={() => {
-                  setForm({ ...form, recipientType: "employee", clientEmail: "", employeeEmail: "" })
+                  setForm({ ...form, recipientType: "employee", clientEmail: "", employeeEmail: "", vendorEmail: "" })
                 }}
                 className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition ${
                   form.recipientType === "employee"
@@ -206,20 +219,35 @@ export default function ContractForm({ open, setOpen, onSuccess, initialData = n
               >
                 Employee
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setForm({ ...form, recipientType: "vendor", clientEmail: "", employeeEmail: "", vendorEmail: "" })
+                }}
+                className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition ${
+                  form.recipientType === "vendor"
+                    ? "bg-blue-50 dark:bg-zinc-950 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-zinc-700"
+                    : "bg-gray-50 dark:bg-zinc-900 text-gray-700 dark:text-zinc-300 border-gray-300 dark:border-zinc-700 hover:border-gray-400 dark:hover:border-zinc-600"
+                }`}
+              >
+                Vendor
+              </button>
             </div>
           </div>
 
           {/* Recipient Email Dropdown */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">
-              Select {form.recipientType === "employee" ? "Employee" : "Client"}
+              Select {form.recipientType === "employee" ? "Employee" : form.recipientType === "vendor" ? "Vendor" : "Client"}
             </label>
             <select
               value={currentRecipientEmail}
-              aria-label={`Select ${form.recipientType === "employee" ? "Employee" : "Client"}`}
+              aria-label={`Select ${form.recipientType === "employee" ? "Employee" : form.recipientType === "vendor" ? "Vendor" : "Client"}`}
               onChange={(e) => {
                 if (form.recipientType === "employee") {
                   setForm({ ...form, employeeEmail: e.target.value })
+                } else if (form.recipientType === "vendor") {
+                  setForm({ ...form, vendorEmail: e.target.value })
                 } else {
                   setForm({ ...form, clientEmail: e.target.value })
                 }
@@ -228,7 +256,7 @@ export default function ContractForm({ open, setOpen, onSuccess, initialData = n
               className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-50 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 focus:border-transparent disabled:opacity-50 cursor-pointer"
             >
               <option value="">
-                {loadingRecipients ? "Loading..." : `Select ${form.recipientType === "employee" ? "employee" : "client"}...`}
+                {loadingRecipients ? "Loading..." : `Select ${form.recipientType === "employee" ? "employee" : form.recipientType === "vendor" ? "vendor" : "client"}...`}
               </option>
               {recipients.map((recipient) => (
                 <option key={recipient.email} value={recipient.email}>

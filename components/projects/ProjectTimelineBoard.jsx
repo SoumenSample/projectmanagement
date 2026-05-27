@@ -169,6 +169,20 @@ function cloneProjectTasks(project) {
   };
 }
 
+async function readResponseBody(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: text };
+  }
+}
+
 export default function ProjectTimelineBoard({
   role,
   sessionUserId,
@@ -325,7 +339,7 @@ export default function ProjectTimelineBoard({
           }),
         });
 
-        const data = await response.json();
+        const data = await readResponseBody(response);
 
         if (!response.ok) {
           throw new Error(data.error || "Failed to update task");
@@ -362,7 +376,7 @@ export default function ProjectTimelineBoard({
         method: "DELETE",
       });
 
-      const data = await response.json();
+      const data = await readResponseBody(response);
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to delete project");
@@ -456,7 +470,7 @@ export default function ProjectTimelineBoard({
 
               {/* ── Gantt timeline bar ── */}
               <div className="overflow-x-auto pb-2">
-                <div className="min-w-[1200px] space-y-3">
+                <div className="min-w-300 space-y-3">
                   <div
                     className="grid gap-2 border-b border-gray-200 dark:border-white/10 pb-3"
                     style={{ gridTemplateColumns: `repeat(${timeline.days.length}, minmax(${dayWidth}px, ${dayWidth}px))` }}
@@ -485,7 +499,7 @@ export default function ProjectTimelineBoard({
 
                     <div
                       aria-hidden="true"
-                      className="absolute inset-0 rounded-[26px] border border-gray-200 dark:border-white/5 bg-[linear-gradient(to_right,rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.03)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:144px_100%,100%_82px]"
+                      className="absolute inset-0 rounded-[26px] border border-gray-200 dark:border-white/5 bg-[linear-gradient(to_right,rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.03)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-size-[144px_100%,100%_82px]"
                     />
 
                     {/* Project bar — spans exactly from start to deadline */}
@@ -554,7 +568,7 @@ export default function ProjectTimelineBoard({
                 {role !== "client" ? (
                   <div className="space-y-3">
                     <div className="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-white/50">Tasks</div>
-                    <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                    <div className="space-y-3 max-h-105 overflow-y-auto pr-1">
                       {(displayProject.tasks || []).map((task) => (
                         <div
                           key={task._id || task.id || task.title}
@@ -621,7 +635,7 @@ export default function ProjectTimelineBoard({
                   Done items are only populated up to and including the deadline day.
               ── */}
               <div className="xl:col-span-2 overflow-x-auto pb-2">
-                <div className="min-w-[1200px] space-y-3">
+                <div className="min-w-300 space-y-3">
                   <div
                     className="grid gap-2"
                     style={{ gridTemplateColumns: `repeat(${timeline.days.length}, minmax(${dayWidth}px, ${dayWidth}px))` }}
@@ -635,7 +649,7 @@ export default function ProjectTimelineBoard({
                       return (
                         <div
                           key={`done-${day.toISOString()}`}
-                          className={`min-h-[88px] rounded-xl border p-2 transition-opacity ${
+                          className={`min-h-22 rounded-xl border p-2 transition-opacity ${
                             isAfterDeadline
                               ? "border-gray-100 dark:border-white/5 bg-gray-50/40 dark:bg-zinc-900/20 opacity-35 pointer-events-none"
                               : "border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-zinc-900/50 text-gray-900 dark:text-white"

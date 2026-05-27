@@ -52,12 +52,18 @@
 
 import { useCallback, useEffect, useState } from "react"
 import PaymentForm from "@/components/paymentForm"
+import AdminSalaryForm from "@/components/adminSalaryForm"
+import AdminVendorForm from "@/components/adminVendorForm"
 import { useNotification } from "@/hooks/useNotification"
 
 export default function AdminPayment() {
   const [payments, setPayments] = useState([])
   const [open, setOpen] = useState(false)
+  const [openSalary, setOpenSalary] = useState(false)
+  const [openVendor, setOpenVendor] = useState(false)
   const [editData, setEditData] = useState(null)
+  const [salaryEditData, setSalaryEditData] = useState(null)
+  const [vendorEditData, setVendorEditData] = useState(null)
   const notify = useNotification()
 
   const load = useCallback(async () => {
@@ -80,6 +86,7 @@ export default function AdminPayment() {
 
   const handleAddPayment = () => {
     setEditData(null)
+    setSalaryEditData(null)
     setOpen(true)
     notify.info(
       "Add payment opened",
@@ -89,6 +96,30 @@ export default function AdminPayment() {
   }
 
   const handleEditPayment = (payment) => {
+    // If this payment targets an employee, open the salary editor
+    if (payment?.employee) {
+      setSalaryEditData(payment)
+      setOpenSalary(true)
+      notify.info(
+        "Edit salary opened",
+        `Editing salary for ${payment.employee?.name || payment.employee || "employee"}.`,
+        { sourceTab: "payment", route: "/dashboard/admin/payment", autoClose: false }
+      )
+      return
+    }
+
+    // If this payment targets a vendor, open vendor editor
+    if (payment?.vendor) {
+      setVendorEditData(payment)
+      setOpenVendor(true)
+      notify.info(
+        "Edit vendor payment opened",
+        `Editing payment for ${payment.vendor?.name || payment.vendor || "vendor"}.`,
+        { sourceTab: "payment", route: "/dashboard/admin/payment", autoClose: false }
+      )
+      return
+    }
+
     setEditData(payment)
     setOpen(true)
     notify.info(
@@ -118,8 +149,16 @@ export default function AdminPayment() {
     }
   }
 
-  const totalCollected = payments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
-  const totalFees = payments.reduce((sum: number, p: any) => sum + (p.totalFee || 0), 0)
+        const [view, setView] = useState("clients")
+
+        const clientPayments = payments.filter((p:any) => !p.employee && !p.vendor)
+        const employeePayments = payments.filter((p:any) => !!p.employee)
+        const vendorPayments = payments.filter((p:any) => !!p.vendor)
+        const visiblePayments = view === "clients" ? clientPayments : view === "employees" ? employeePayments : vendorPayments
+
+        const totalRecords = visiblePayments.length
+        const totalAmount = visiblePayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+        const totalFees = visiblePayments.reduce((sum: number, p: any) => sum + (p.totalFee || 0), 0)
 
   return (
     <div className="p-6 space-y-6">
@@ -132,29 +171,85 @@ export default function AdminPayment() {
             {payments.length} record{payments.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          onClick={handleAddPayment}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Add Payment
-        </button>
+        <div />
       </div>
 
       {/* ── Summary Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {[
-          { label: "Total Records", value: payments.length, mono: false },
-          { label: "Total Collected", value: `₹${totalCollected.toLocaleString()}`, mono: true },
-          { label: "Total Fees", value: `₹${totalFees.toLocaleString()}`, mono: true },
-        ].map(({ label, value, mono }) => (
-          <div key={label} className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">{label}</p>
-            <p className={`mt-1 text-xl font-bold text-gray-900 dark:text-white ${mono ? "font-mono" : ""}`}>{value}</p>
+        {view === "employees" || view === "vendors" ? (
+          [
+            { label: "Total Records", value: totalRecords, mono: false },
+            { label: "Total Expenses", value: `₹${totalAmount.toLocaleString()}`, mono: true },
+          ].map(({ label, value, mono }) => (
+            <div key={label} className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">{label}</p>
+              <p className={`mt-1 text-xl font-bold text-gray-900 dark:text-white ${mono ? "font-mono" : ""}`}>{value}</p>
+            </div>
+          ))
+        ) : (
+          [
+            { label: "Total Records", value: totalRecords, mono: false },
+            { label: "Total Collected", value: `₹${totalAmount.toLocaleString()}`, mono: true },
+            { label: "Total Fees", value: `₹${totalFees.toLocaleString()}`, mono: true },
+          ].map(({ label, value, mono }) => (
+            <div key={label} className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">{label}</p>
+              <p className={`mt-1 text-xl font-bold text-gray-900 dark:text-white ${mono ? "font-mono" : ""}`}>{value}</p>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* ── View Toggle / Actions ── */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="rounded-md bg-gray-50 dark:bg-white/5 p-1 inline-flex">
+            <button
+              onClick={() => setView("clients")}
+              className={`px-3 py-1 rounded-md text-sm font-medium ${view === "clients" ? "bg-gray-900 text-white dark:bg-white dark:text-black" : "text-gray-700 dark:text-gray-300"}`}
+            >
+              Clients
+            </button>
+            <button
+              onClick={() => setView("employees")}
+              className={`px-3 py-1 rounded-md text-sm font-medium ${view === "employees" ? "bg-gray-900 text-white dark:bg-white dark:text-black" : "text-gray-700 dark:text-gray-300"}`}
+            >
+              Employees
+            </button>
+            <button
+              onClick={() => setView("vendors")}
+              className={`px-3 py-1 rounded-md text-sm font-medium ${view === "vendors" ? "bg-gray-900 text-white dark:bg-white dark:text-black" : "text-gray-700 dark:text-gray-300"}`}
+            >
+              Vendors
+            </button>
           </div>
-        ))}
+
+          {view === "clients" ? (
+            <button
+              onClick={handleAddPayment}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Payment
+            </button>
+          ) : view === 'employees' ? (
+            <button
+              onClick={() => { setOpenSalary(true); notify.info('Add salary opened', 'Fill employee, amount and description', { sourceTab: 'payment', route: '/dashboard/admin/payment', autoClose: false }) }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:opacity-90 transition-opacity"
+            >
+              Add Salary
+            </button>
+          ) : (
+            <button
+              onClick={() => { setOpenVendor(true); notify.info('Add vendor payment opened', 'Fill vendor, amount and description', { sourceTab: 'payment', route: '/dashboard/admin/payment', autoClose: false }) }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:opacity-90 transition-opacity"
+            >
+              Add Vendor Payment
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Table ── */}
@@ -165,7 +260,7 @@ export default function AdminPayment() {
             {/* Head */}
             <thead>
               <tr className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
-                {["Title", "Client Email", "Paid", "Total Fee", "Balance", "Actions"].map((col) => (
+                {["Title", "Recipient", "Paid", "Total Fee", "Balance", "Actions"].map((col) => (
                   <th
                     key={col}
                     className={`px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap ${col === "Actions" ? "text-right" : "text-left"}`}
@@ -178,7 +273,7 @@ export default function AdminPayment() {
 
             {/* Body */}
             <tbody className="divide-y divide-gray-100 dark:divide-white/5 bg-gray-50 dark:bg-white/5">
-              {payments.length === 0 ? (
+              {visiblePayments.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-12 text-center text-gray-400 dark:text-gray-500">
                     <div className="flex flex-col items-center gap-2">
@@ -191,21 +286,26 @@ export default function AdminPayment() {
                   </td>
                 </tr>
               ) : (
-                payments.map((p: any) => {
+                visiblePayments.map((p: any) => {
                   const balance = (p.totalFee || 0) - (p.amount || 0)
                   const isPaid = balance <= 0
 
                   return (
                     <tr key={p._id} className="hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-
                       {/* Title */}
                       <td className="px-5 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
                         {p.title || "—"}
                       </td>
 
-                      {/* Client Email */}
+                      {/* Recipient */}
                       <td className="px-5 py-4 text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {p.clientEmail || "—"}
+                        {p.employee ? (
+                          typeof p.employee === 'object' ? (p.employee.name || p.employee.email || p.employee._id) : 'Employee'
+                        ) : p.vendor ? (
+                          typeof p.vendor === 'object' ? (p.vendor.name || p.vendor.email || p.vendor._id) : 'Vendor'
+                        ) : (
+                          p.clientEmail || "—"
+                        )}
                       </td>
 
                       {/* Paid */}
@@ -275,14 +375,16 @@ export default function AdminPayment() {
         </div>
 
         {/* Footer */}
-        {payments.length > 0 && (
+        {visiblePayments.length > 0 && (
           <div className="px-5 py-3 bg-gray-50 dark:bg-white/5 border-t border-gray-200 dark:border-white/5 text-xs text-gray-500 dark:text-gray-400">
-            Showing {payments.length} payment{payments.length !== 1 ? "s" : ""}
+            Showing {visiblePayments.length} payment{visiblePayments.length !== 1 ? "s" : ""}
           </div>
         )}
       </div>
 
       <PaymentForm open={open} setOpen={setOpen} onSuccess={load} editData={editData} />
+      <AdminSalaryForm open={openSalary} setOpen={setOpenSalary} onSuccess={() => { setSalaryEditData(null); load() }} editData={salaryEditData} />
+      <AdminVendorForm open={openVendor} setOpen={setOpenVendor} onSuccess={() => { setVendorEditData(null); load() }} editData={vendorEditData} />
     </div>
   )
 }
