@@ -3,12 +3,18 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth-options";
 import { connectToDatabase } from "@/lib/mongodb";
+import Project from "@/lib/models/Project";
 import Client from "@/lib/models/Client";
 import User from "@/lib/models/User";
 import Lead from "@/lib/models/Lead";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function formatProjectTotal(value) {
+  const total = Number(value) || 0;
+  return String(Math.round(total * 100) / 100);
+}
 
 function normalizePhone(value) {
   if (typeof value !== "string") {
@@ -46,12 +52,39 @@ export async function GET() {
 
     await connectToDatabase();
 
-    const clients = await Client.find({})
+    const [clients, projects] = await Promise.all([
+      Client.find({})
       .sort({ createdAt: -1 })
       .populate("createdBy", "name email role")
       .populate("convertedFromLead", "name email")
       .populate("convertedBy", "name email")
-      .lean();
+      .lean(),
+      Project.find({}, { client: 1, projectCost: 1 }).lean(),
+    ]);
+
+    const projectTotalsByClient = new Map();
+    for (const project of projects || []) {
+      const clientId = String(project?.client || "").trim();
+      if (!clientId) continue;
+
+      const projectCost = Number(project?.projectCost) || 0;
+      projectTotalsByClient.set(clientId, (projectTotalsByClient.get(clientId) || 0) + projectCost);
+    }
+
+    function getDerivedFinalBudget(clientRecord) {
+      const keys = [clientRecord?.linkedUser, clientRecord?._id]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+
+      for (const key of keys) {
+        const total = projectTotalsByClient.get(key);
+        if (typeof total === "number") {
+          return formatProjectTotal(total);
+        }
+      }
+
+      return String(clientRecord?.finalBudget || "0").trim() || "0";
+    }
 
     // Include client-role users created from User Management that don't have a Client profile yet.
     const clientUsersWithoutProfile = await User.find(
@@ -98,10 +131,16 @@ export async function GET() {
         status: user.isActive ? "active" : "inactive",
         createdBy: null,
         linkedUser: user._id,
+        finalBudget: getDerivedFinalBudget(user),
         createdAt: user.createdAt,
       }));
 
-    const mergedClients = [...clients, ...mappedUserClients].sort(
+    const enrichedClients = clients.map((client) => ({
+      ...client,
+      finalBudget: getDerivedFinalBudget(client),
+    }));
+
+    const mergedClients = [...enrichedClients, ...mappedUserClients].sort(
       (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
     );
 

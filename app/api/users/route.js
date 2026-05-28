@@ -557,7 +557,6 @@ const createUserSchema = z.object({
   phone: z.string().optional(),
   age: z.coerce.number().int().min(1).max(120).optional(),
   region: z.string().max(120).optional(),
-  finalBudget: z.string().optional(),
   projectName: z.string().optional(),
   projectDescription: z.string().optional(),
   validFrom: z.string().optional(),
@@ -762,7 +761,7 @@ export async function POST(request) {
         status: parsed.data.status || "active",
         linkedUser: created._id,
         createdBy: session.user.id,
-        finalBudget: parsed.data.finalBudget || "0",
+        finalBudget: "0",
         projectName: parsed.data.projectName || "",
         projectDescription: parsed.data.projectDescription || "",
       });
@@ -824,7 +823,6 @@ export async function POST(request) {
             <h3>Contract Information</h3>
             <p><b>Contract Starting Date:</b> ${new Date(parsed.data.validFrom).toLocaleDateString()}</p>
             <p><b>Contract Ending Date:</b> ${new Date(parsed.data.validTo).toLocaleDateString()}</p>
-            ${parsed.data.finalBudget ? `<p><b>Final Budget:</b> ${parsed.data.finalBudget}</p>` : ""}
             ${parsed.data.projectName ? `<p><b>Project Name:</b> ${parsed.data.projectName}</p>` : ""}
             ${parsed.data.projectDescription ? `<p><b>Project Description:</b> ${parsed.data.projectDescription}</p>` : ""}
           `;

@@ -42,6 +42,7 @@ const createProjectSchema = z.object({
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   status: z.enum(["planning", "in-progress", "at-risk", "completed", "paused"]).default("planning"),
   tasks: z.array(taskInputSchema).optional().default([]),
+  projectCost: z.coerce.number().min(0).optional().default(0),
 });
 
 function parseDate(value, fallback = null) {
@@ -55,7 +56,7 @@ function parseDate(value, fallback = null) {
 
 async function populateProject(projectId) {
   return Project.findById(projectId)
-    .populate("client", "name email role finalBudget")
+    .populate("client", "name email role source finalBudget")
     .populate("assignedVendor", "name email role")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
@@ -133,7 +134,7 @@ export async function GET() {
 
   const projects = await Project.find(query)
     .sort({ deadline: 1, updatedAt: -1 })
-    .populate("client", "name email role finalBudget")
+    .populate("client", "name email role source finalBudget")
     .populate("assignedVendor", "name email role")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
@@ -226,6 +227,7 @@ export async function POST(request) {
     status,
     progress,
     tasks,
+    projectCost: parsed.data.projectCost ?? 0,
     createdBy: session.user.id,
     updatedBy: session.user.id,
     lastActivityAt: new Date(),

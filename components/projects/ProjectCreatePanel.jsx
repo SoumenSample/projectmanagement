@@ -452,6 +452,7 @@ function buildFormFromProject(project) {
     deadline: project?.deadline ? new Date(project.deadline).toISOString().slice(0, 10) : "",
     priority: project?.priority || "medium",
     status: project?.status || "planning",
+    projectCost: project?.projectCost ?? "",
     tags: Array.isArray(project?.tags) ? project.tags.join(", ") : "",
     tasks,
   };
@@ -535,6 +536,7 @@ export default function ProjectCreatePanel({
         deadline: form.deadline,
         priority: form.priority,
         status: form.status,
+        projectCost: form.projectCost === "" ? 0 : Number(form.projectCost) || 0,
         tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
         tasks: form.tasks
           .filter((t) => t.title.trim())
@@ -848,7 +850,7 @@ export default function ProjectCreatePanel({
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-4">
                 <div>
                   <label className="pcf-label">Deadline</label>
                   <input
@@ -886,6 +888,19 @@ export default function ProjectCreatePanel({
                     <option value="completed">✅ Completed</option>
                     <option value="paused">⏸️ Paused</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="pcf-label">Project Cost</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.projectCost}
+                    onChange={(e) => setForm((c) => ({ ...c, projectCost: e.target.value }))}
+                    placeholder="0"
+                    className="pcf-input"
+                  />
                 </div>
               </div>
 

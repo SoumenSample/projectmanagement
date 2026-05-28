@@ -67,10 +67,10 @@ export async function GET(req) {
       .sort({ createdAt: -1 })
       .populate({
         path: "project",
-        select: "title client",
+        select: "title client projectCost",
         populate: {
           path: "client",
-          select: "name email role finalBudget",
+          select: "name email role",
         },
       })
       .populate({
@@ -78,7 +78,22 @@ export async function GET(req) {
         select: "name email role",
       })
 
-    return NextResponse.json({ payments })
+    const paymentsWithLiveTotalFee = payments.map((payment) => {
+      const paymentObject = payment.toObject ? payment.toObject() : payment
+      const liveProjectCost = paymentObject?.project?.projectCost
+
+      if (paymentObject?.project && liveProjectCost !== undefined && liveProjectCost !== null) {
+        const parsedProjectCost = Number(liveProjectCost)
+        return {
+          ...paymentObject,
+          totalFee: Number.isFinite(parsedProjectCost) ? parsedProjectCost : 0,
+        }
+      }
+
+      return paymentObject
+    })
+
+    return NextResponse.json({ payments: paymentsWithLiveTotalFee })
   } catch (err) {
     console.error('GET /api/payments error:', err?.message || err)
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 })
@@ -86,7 +101,7 @@ export async function GET(req) {
 }
 
 function parseProjectBudget(project) {
-  const projectBudget = project?.client?.finalBudget ?? project?.finalBudget ?? ""
+  const projectBudget = project?.projectCost ?? ""
   const parsedBudget = Number(projectBudget)
   return Number.isFinite(parsedBudget) ? parsedBudget : 0
 }
@@ -100,7 +115,7 @@ export async function POST(req) {
     let project = null
 
     if (body.project) {
-      project = await Project.findById(body.project).populate("client", "name email role finalBudget")
+      project = await Project.findById(body.project).populate("client", "name email role")
 
       if (!project) {
         return NextResponse.json({ error: "Project not found." }, { status: 404 })

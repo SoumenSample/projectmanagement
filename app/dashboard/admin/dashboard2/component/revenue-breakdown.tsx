@@ -160,7 +160,7 @@ export function RevenueBreakdown() {
       <CardHeader className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-2">
         <div>
           <CardTitle className="">Revenue Breakdown</CardTitle>
-          <CardDescription className="">Total client budget by source</CardDescription>
+          <CardDescription className="">Total client revenue by source</CardDescription>
         </div>
         <div className="flex items-center space-x-2">
           <Select value={activeSource} onValueChange={setActiveSource}>

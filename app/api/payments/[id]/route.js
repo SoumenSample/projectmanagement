@@ -16,7 +16,7 @@ export async function PUT(req, { params }) {
   let project = null
 
   if (body.project) {
-    project = await Project.findById(body.project).populate("client", "name email role finalBudget")
+    project = await Project.findById(body.project).populate("client", "name email role")
 
     if (!project) {
       return NextResponse.json({ error: "Project not found." }, { status: 404 })
@@ -24,7 +24,7 @@ export async function PUT(req, { params }) {
   }
 
   const amount = Number(body.amount) || 0
-  const totalFee = project ? Number(project?.client?.finalBudget ?? project?.finalBudget ?? 0) || 0 : Number(body.totalFee) || 0
+  const totalFee = project ? Number(project?.projectCost ?? 0) || 0 : Number(body.totalFee) || 0
   const clientEmail = project?.client?.email
     ? String(project.client.email).trim().toLowerCase()
     : String(body.clientEmail || "").trim().toLowerCase()

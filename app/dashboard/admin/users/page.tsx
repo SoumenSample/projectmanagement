@@ -968,7 +968,6 @@ export default function UsersPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState("client")
-  const [finalBudget, setFinalBudget] = useState("")
   const [projectName, setProjectName] = useState("")
   const [projectDescription, setProjectDescription] = useState("")
   const [phone, setPhone] = useState("")
@@ -1015,7 +1014,7 @@ export default function UsersPage() {
   // ── Create user ─────────────────────────────────────────────────────────────
   function resetCreateForm() {
     setName(""); setEmail(""); setPassword(""); setRole("client")
-    setFinalBudget(""); setProjectName(""); setProjectDescription("")
+    setProjectName(""); setProjectDescription("")
     setPhone(""); setAge(""); setRegion(""); setValidFrom(""); setValidTo("")
     setSource(""); setClientStatus("active"); setEmployeeRole("Staff"); setJobLocation("office"); setHomeLatitude(""); setHomeLongitude("")
   }
@@ -1028,7 +1027,6 @@ export default function UsersPage() {
       if (!age.trim()) { setError("Age is required for client users."); return }
       if (!region.trim()) { setError("Region is required for client users."); return }
       if (!validFrom || !validTo) { setError("Contract dates are required for client users."); return }
-      if (!finalBudget) { setError("Final budget is required for client users."); return }
       if (new Date(validFrom) >= new Date(validTo)) { setError("Contract ending date must be after starting date."); return }
     }
     if (role === "employee") {
@@ -1044,7 +1042,6 @@ export default function UsersPage() {
       if (role === "client") {
         payload.age = age ? Number(age) : undefined
         payload.region = region.trim()
-        payload.finalBudget = finalBudget
         payload.projectName = projectName
         payload.projectDescription = projectDescription
         payload.validFrom = validFrom
@@ -1348,9 +1345,6 @@ export default function UsersPage() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FieldGroup label="Final Budget" icon={DollarSign}>
-                        <Input className={inputCls} placeholder="₹ 0.00" value={finalBudget} onChange={(e) => setFinalBudget(e.target.value)} required />
-                      </FieldGroup>
                       <FieldGroup label="Phone" icon={Phone}>
                         <Input className={inputCls} placeholder="+91 00000 00000" value={phone} onChange={(e) => setPhone(e.target.value)} required />
                       </FieldGroup>

@@ -59,7 +59,6 @@ export default function UsersPage() {
   const [password, setPassword] = useState("")
   const [role, setRole] = useState("client")
   const [source, setSource] = useState("manual-admin")
-  const [finalBudget, setFinalBudget] = useState("")
   const [projectName, setProjectName] = useState("")
   const [projectDescription, setProjectDescription] = useState("")
   const [phone, setPhone] = useState("")
@@ -123,10 +122,6 @@ export default function UsersPage() {
       setError("Region is required for client users.")
       return
     }
-    if (role === "client" && !finalBudget) {
-      setError("Final budget is required for client users.")
-      return
-    }
     if (role === "client") {
       const fromDate = new Date(validFrom)
       const toDate = new Date(validTo)
@@ -144,7 +139,6 @@ export default function UsersPage() {
         payload.source = source
         payload.age = age ? Number(age) : undefined
         payload.region = region.trim()
-        payload.finalBudget = finalBudget
         payload.projectName = projectName
         payload.projectDescription = projectDescription
         payload.phone = phone
@@ -164,7 +158,6 @@ export default function UsersPage() {
       setPassword("")
       setRole("client")
       setSource("manual-admin")
-      setFinalBudget("")
       setProjectName("")
       setProjectDescription("")
       setAge("")
@@ -516,10 +509,6 @@ export default function UsersPage() {
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <Label htmlFor="finalBudget" className="text-xs">Final Budget *</Label>
-                              <Input id="finalBudget" value={finalBudget} onChange={(e) => setFinalBudget(e.target.value)} placeholder="₹10,000" />
-                            </div>
                             <div className="space-y-1.5">
                               <Label htmlFor="projectName" className="text-xs">Project Name</Label>
                               <Input id="projectName" value={projectName} onChange={(e) => setProjectName(e.target.value)} />

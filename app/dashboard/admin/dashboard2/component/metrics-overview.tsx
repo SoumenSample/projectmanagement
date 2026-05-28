@@ -186,12 +186,12 @@ export function MetricsOverview() {
     {
       title: "Total Revenue",
       value: loadingRevenue ? "..." : `₹${Math.round(revenueData.totalRevenue)?.toLocaleString() || "0"}`,
-      description: "Total budget from all clients",
+      description: "Total project cost revenue",
       change: revenueData.percentChange || "+0%",
       trend: revenueData.percentChange?.startsWith("+") ? "up" : revenueData.percentChange === "+0%" ? "flat" : "down",
       icon: DollarSign,
       footer: revenueData.percentChange?.startsWith("+") ? "Trending up this month" : "Trending down this month",
-      subfooter: "Total budget from all active clients"
+      subfooter: "Sum of all project costs"
     },
     {
       title: "Active Customers",

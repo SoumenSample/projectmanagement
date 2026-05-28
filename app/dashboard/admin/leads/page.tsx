@@ -158,7 +158,6 @@ export default function UsersPage() {
     const password = convertDates[leadId]?.password
     const from = convertDates[leadId]?.from
     const to = convertDates[leadId]?.to
-    const finalBudget = convertDates[leadId]?.finalBudget
     const projectName = convertDates[leadId]?.projectName || ""
     const projectDescription = convertDates[leadId]?.projectDescription || ""
 
@@ -168,7 +167,6 @@ export default function UsersPage() {
 
     if (!password || password.length < 8) { setError("Password must be at least 8 characters."); return }
     if (!from || !to) { setError("Please provide both valid from and valid to dates."); return }
-    if (!finalBudget || finalBudget.trim().length === 0) { setError("Final budget is required."); return }
     if (new Date(from) >= new Date(to)) { setError("Valid To date must be after Valid From date."); return }
 
     setConvertingLeadId(leadId)
@@ -177,7 +175,7 @@ export default function UsersPage() {
       const response = await fetch(`/api/leads/convert/${leadId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, email, validFrom: from, validTo: to, finalBudget, projectName, projectDescription }),
+        body: JSON.stringify({ password, email, validFrom: from, validTo: to, projectName, projectDescription }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || "Failed to convert lead")
@@ -685,19 +683,6 @@ export default function UsersPage() {
                       className={inputCls}
                       value={convertDates[showConvertModal]?.to || ""}
                       onChange={(e) => setConvertDates({ ...convertDates, [showConvertModal]: { ...convertDates[showConvertModal], to: e.target.value } })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Final Budget <span className="text-red-500 normal-case font-normal">*</span></Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm select-none">₹</span>
-                    <Input
-                      placeholder="e.g. 1,20,000"
-                      className={`${inputCls} pl-7`}
-                      value={convertDates[showConvertModal]?.finalBudget || ""}
-                      onChange={(e) => setConvertDates({ ...convertDates, [showConvertModal]: { ...convertDates[showConvertModal], finalBudget: e.target.value } })}
                     />
                   </div>
                 </div>

@@ -32,7 +32,10 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body className={`${rubik.className} min-h-screen bg-background text-foreground antialiased`}>
+      <body
+        suppressHydrationWarning
+        className={`${rubik.className} min-h-screen bg-background text-foreground antialiased`}
+      >
         <Providers>
           <main className="relative min-h-screen w-full">{children}</main>
         </Providers>

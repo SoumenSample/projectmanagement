@@ -25,7 +25,6 @@ const convertSchema = z.object({
     }),
   validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   validTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  finalBudget: z.string().trim().min(1, "Final budget is required"),
   projectName: z.string().trim().optional().default(""),
   projectDescription: z.string().trim().optional().default(""),
 });
@@ -97,7 +96,7 @@ export async function POST(request, { params }) {
       source: "lead-conversion",
       linkedUser: user._id,
       createdBy: session.user.id,
-      finalBudget: validated.finalBudget,
+      finalBudget: "0",
       projectName: validated.projectName,
       projectDescription: validated.projectDescription,
     });

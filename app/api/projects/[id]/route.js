@@ -41,6 +41,7 @@ const updateProjectSchema = z.object({
   priority: z.enum(["low", "medium", "high"]).optional(),
   status: z.enum(["planning", "in-progress", "at-risk", "completed", "paused"]).optional(),
   tasks: z.array(taskInputSchema).optional(),
+  projectCost: z.coerce.number().min(0).optional(),
 });
 
 function parseDate(value) {
@@ -91,7 +92,7 @@ function normalizeTasks(tasks = [], existingTasks = []) {
 
 async function populateProject(projectId) {
   return Project.findById(projectId)
-    .populate("client", "name email role finalBudget")
+    .populate("client", "name email role source finalBudget")
     .populate("assignedVendor", "name email role")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
@@ -171,7 +172,7 @@ export async function GET(request, { params }) {
   await connectToDatabase();
 
   const project = await Project.findById(id)
-    .populate("client", "name email role finalBudget")
+    .populate("client", "name email role source finalBudget")
     .populate("assignedVendor", "name email role")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
@@ -255,6 +256,10 @@ export async function PATCH(request, { params }) {
     } else {
       project.assignedVendor = null;
     }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(parsed.data, "projectCost")) {
+    project.projectCost = parsed.data.projectCost ?? 0;
   }
 
   if (Array.isArray(parsed.data.assignedEmployeeIds)) {

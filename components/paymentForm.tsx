@@ -159,7 +159,7 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
     const selectedProject = projects.find((project) => String(project._id) === String(form.projectId))
     if (!selectedProject) return
 
-    const projectBudget = selectedProject?.client?.finalBudget ?? selectedProject?.finalBudget ?? ""
+    const projectBudget = selectedProject?.projectCost ?? ""
     const projectClientEmail = selectedProject?.client?.email || ""
 
     setForm((current) => ({
@@ -241,7 +241,7 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
     const method = editData ? "PUT" : "POST"
     const url = editData ? `/api/payments/${editData._id}` : "/api/payments"
     const selectedProject = projects.find((project) => String(project._id) === String(form.projectId))
-    const projectBudget = selectedProject?.client?.finalBudget ?? selectedProject?.finalBudget ?? form.totalFee
+    const projectBudget = selectedProject?.projectCost ?? form.totalFee
     const projectTotalFee = Number(projectBudget) || 0
 
     try {
@@ -283,7 +283,7 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
   if (!open) return null
 
   const selectedProject = projects.find((project) => String(project._id) === String(form.projectId))
-  const selectedProjectBudget = selectedProject?.client?.finalBudget ?? selectedProject?.finalBudget ?? ""
+  const selectedProjectBudget = selectedProject?.projectCost ?? ""
   const normalizedClientEmail = String(form.clientEmail || "").trim().toLowerCase()
   const filteredProjects = projects.filter((project) => {
     const projectClientEmail = String(project?.client?.email || "").trim().toLowerCase()
@@ -411,7 +411,7 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
               {showProjectDropdown && (
                 <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-zinc-900">
                   {filteredProjects.length > 0 ? filteredProjects.map((project) => {
-                    const budget = project?.client?.finalBudget ?? project?.finalBudget ?? ""
+                    const budget = project?.projectCost ?? ""
                     const clientName = project?.client?.name || project?.client?.email || "Unassigned client"
 
                     return (
@@ -419,7 +419,7 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
                         key={project._id}
                         type="button"
                         onClick={() => {
-                          const projectBudget = project?.client?.finalBudget ?? project?.finalBudget ?? ""
+                          const projectBudget = project?.projectCost ?? ""
                           const projectClientEmail = project?.client?.email || ""
 
                           setForm((current) => ({
@@ -552,7 +552,7 @@ export default function PaymentForm({ open, setOpen, onSuccess, editData }) {
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5
                 text-gray-500 dark:text-gray-400">
-                Project Final Budget
+                Project Cost
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400 dark:text-gray-500 pointer-events-none">₹</span>
