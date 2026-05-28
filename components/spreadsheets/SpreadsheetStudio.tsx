@@ -345,7 +345,7 @@ const EMPTY_CELL_FORMAT = { bold: false, italic: false, underline: false, align:
 export default function SpreadsheetStudio() {
   const [sheets, setSheets] = useState([])
   const [selectedId, setSelectedId] = useState(null)
-  const [title, setTitle] = useState("Untitled spreadsheet")
+  const [title, setTitle] = useState("Untitled Grids")
   const [summary, setSummary] = useState("")
   const [cells, setCells] = useState(createEmptySpreadsheetGrid(DEFAULT_ROWS, DEFAULT_COLS))
   const [fmt, setFmt] = useState(makeEmptyFormat(DEFAULT_ROWS, DEFAULT_COLS))
@@ -588,7 +588,7 @@ export default function SpreadsheetStudio() {
   const applySheetToEditor = (sheet) => {
     setSelectedId(sheet._id)
     selectedIdRef.current = sheet._id
-    setTitle(sheet.title || "Untitled spreadsheet")
+    setTitle(sheet.title || "Untitled Grid")
     setSummary(sheet.summary || "")
     const c = normalizeSpreadsheetGrid(sheet.cells, DEFAULT_ROWS, DEFAULT_COLS)
     setCells(c)
@@ -600,7 +600,7 @@ export default function SpreadsheetStudio() {
 
   const resetDraft = () => {
     setSelectedId(null); selectedIdRef.current = null
-    setTitle("Untitled spreadsheet"); setSummary("")
+    setTitle("Untitled Grid"); setSummary("")
     const c = createEmptySpreadsheetGrid(DEFAULT_ROWS, DEFAULT_COLS)
     setCells(c); setFmt(makeEmptyFormat(DEFAULT_ROWS, DEFAULT_COLS))
     setIsShared(true); setMessage(""); setSelection({ row: 0, col: 0 }); setSelRange(null)
@@ -671,7 +671,7 @@ export default function SpreadsheetStudio() {
         const next = [...current]; next[index] = saved; return next
       })
       setSelectedId(saved._id); selectedIdRef.current = saved._id
-      setTitle(saved.title || "Untitled spreadsheet")
+      setTitle(saved.title || "Untitled Grid")
       setSummary(saved.summary || ""); setIsShared(saved.isShared !== false)
       setMessage("Saved"); setTimeout(() => setMessage(""), 2000)
     } catch (error) {
@@ -845,11 +845,13 @@ export default function SpreadsheetStudio() {
       {/* ── Title bar ── */}
       <div className="flex shrink-0 items-center gap-2 bg-white px-3 py-1.5">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center">
-          <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
+          {/* <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
             <rect x="3" y="3" width="18" height="18" rx="2" fill="#34a853" />
             <rect x="6" y="7" width="12" height="1.5" rx="0.75" fill="white" />
             <rect x="6" y="11" width="12" height="1.5" rx="0.75" fill="white" />
             <rect x="6" y="15" width="8" height="1.5" rx="0.75" fill="white" />
+          </svg> */}
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="26" viewBox="0 0 24 24" fill="none" stroke="#34a853" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-table2-icon lucide-table-2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
           </svg>
         </div>
 
@@ -1101,7 +1103,7 @@ export default function SpreadsheetStudio() {
           {sheets.length === 0 ? (
             <div className="flex items-center gap-1.5 border-b-2 border-[#1a73e8] bg-white px-4 py-1 text-xs font-medium text-[#202124]">
               <FileSpreadsheet className="h-3 w-3 text-[#34a853]" />
-              {title || "Untitled spreadsheet"}
+              {title || "Untitled Grid"}
             </div>
           ) : sheets.map((sheet) => (
             <button

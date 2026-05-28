@@ -82,7 +82,7 @@ export default async function DashboardLayout({ children }) {
 
   const businessBrand = {
     businessName: businessSettings?.businessName || "Project Management",
-    logoUrl: businessSettings?.logoUrl || "/logo2.png",
+    logoUrl: businessSettings?.logoUrl || "",
   };
   const roleLabel =
     typeof session.user.role === "string"

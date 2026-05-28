@@ -99,7 +99,7 @@ export default async function CalendarPage() {
           user={{
             name: session.user.name || "User",
             email: session.user.email || "",
-            avatar: "/logo2.png",
+            avatar: "",
           }}
           business={businessBrand}
         />

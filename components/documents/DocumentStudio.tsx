@@ -30,7 +30,7 @@ const COLORS = [
 ]
 
 const emptyDraft = {
-  title: "Untitled document",
+  title: "Untitled Notes",
   summary: "",
   content: "",
   isShared: true,
@@ -575,7 +575,7 @@ export default function DocumentStudio() {
       <div className="flex items-center justify-between border-b border-[#303132] bg-[#303132] px-4 py-1.5">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-white" />
-          <span className="text-[13px] font-semibold text-white">Document Studio</span>
+          <span className="text-[13px] font-semibold text-white">Notes</span>
         </div>
         <input
           value={title}

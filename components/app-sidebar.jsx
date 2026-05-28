@@ -15,7 +15,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, FolderIcon, KanbanSquare, MessageSquareIcon, TicketIcon, UsersIcon, FileTextIcon, ReceiptIcon, WalletCards, Handshake, UserCogIcon, CalendarIcon, BookA, CalendarClock, Table2 } from "lucide-react"
+import { LayoutDashboardIcon, FolderIcon, KanbanSquare, MessageSquareIcon, TicketIcon, UsersIcon, FileTextIcon, ReceiptIcon, WalletCards, Handshake, UserCogIcon, CalendarIcon, BookA, CalendarClock, Table2,FileUser } from "lucide-react"
 
 export function AppSidebar({
   role,
@@ -84,7 +84,7 @@ export function AppSidebar({
           label: "Users",
           items: [
             { title: "Manage Users", url: scopedPath("users"), icon: <UserCogIcon /> },
-            { title: "Leads", url: scopedPath("leads"), icon: <FileTextIcon /> },
+            { title: "Leads", url: scopedPath("leads"), icon: <FileUser /> },
             { title: "Clients", url: scopedPath("clients"), icon: <UsersIcon /> },
             { title: "Attendance", url: attendancePath, icon: <CalendarClock /> },
           ],
@@ -101,8 +101,8 @@ export function AppSidebar({
         {
           label: "Documents",
           items: [
-            { title: "Documents", url: scopedPath("documents"), icon: <FileTextIcon /> },
-            { title: "Sheets", url: scopedPath("sheets"), icon: <Table2 /> },
+            { title: "Notes", url: scopedPath("documents"), icon: <FileTextIcon /> },
+            { title: "Grids", url: scopedPath("sheets"), icon: <Table2 /> },
           ],
         },
       ]
@@ -208,7 +208,7 @@ export function AppSidebar({
           user={{
             name: user?.name || "User",
             email: user?.email || "",
-            avatar: user?.avatar || "/logo2.png",
+            avatar: user?.avatar || "",
             role: normalizedRole,
           }}
         />
