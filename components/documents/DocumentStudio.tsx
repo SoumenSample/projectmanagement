@@ -236,66 +236,66 @@ function ShareModal({ shareUrl, onClose, isShared, setIsShared }) {
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-lg border border-[#d0d0d0] bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[#e0e0e0] px-5 py-4">
+      <div className="w-full max-w-md rounded-lg border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <Share2 className="h-5 w-5 text-[#4472c4]" />
-            <span className="text-[15px] font-semibold text-[#212121]">Share Document</span>
+            <Share2 className="h-5 w-5 text-zinc-600 dark:text-zinc-300" />
+            <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Share Document</span>
           </div>
-          <button onClick={onClose} className="rounded p-1 hover:bg-[#f0f0f0] transition">
-            <X className="h-4 w-4 text-[#666]" />
+          <button onClick={onClose} className="rounded p-1 transition hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <X className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
           </button>
         </div>
         <div className="space-y-4 px-5 py-5">
-          <div className="flex items-center gap-3 rounded-lg border border-[#e0e0e0] bg-[#f8f8f8] p-3">
-            <FileText className="h-8 w-8 shrink-0 text-[#4472c4]" />
+          <div className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <FileText className="h-8 w-8 shrink-0 text-zinc-600 dark:text-zinc-300" />
             <div>
-              <p className="text-[13px] font-medium text-[#212121]">Document link</p>
-              <p className="text-[12px] text-[#666]">Anyone with the link can view this document</p>
+              <p className="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">Document link</p>
+              <p className="text-[12px] text-zinc-600 dark:text-zinc-400">Anyone with the link can view this document</p>
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-semibold text-[#444] uppercase tracking-wide">Share Link</label>
+            <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">Share Link</label>
             <div className="flex gap-2">
               <input
                 readOnly
                 value={shareUrl || "Save the document first to generate a link"}
-                className="flex-1 rounded border border-[#d0d0d0] bg-[#f5f5f5] px-3 py-2 text-[13px] text-[#555] focus:outline-none"
+                className="flex-1 rounded border border-zinc-300 bg-zinc-50 px-3 py-2 text-[13px] text-zinc-700 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
               />
               <button
                 onClick={copy}
                 disabled={!shareUrl}
-                className="flex items-center gap-1.5 rounded border border-[#4472c4] bg-[#4472c4] px-3 py-2 text-[13px] text-white hover:bg-[#365fa0] disabled:opacity-40 transition"
+                className="flex items-center gap-1.5 rounded border border-zinc-700 bg-zinc-700 px-3 py-2 text-[13px] text-white transition hover:bg-zinc-600 disabled:opacity-40 dark:border-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-500"
               >
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 {copied ? "Copied!" : "Copy"}
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-lg border border-[#e0e0e0] p-3">
+          <div className="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
             <input
               id="share-toggle"
               type="checkbox"
               checked={isShared}
               onChange={e => setIsShared(e.target.checked)}
-              className="h-4 w-4 cursor-pointer accent-[#4472c4]"
+              className="h-4 w-4 cursor-pointer accent-zinc-700 dark:accent-zinc-400"
             />
-            <label htmlFor="share-toggle" className="cursor-pointer text-[13px] text-[#333]">
+            <label htmlFor="share-toggle" className="cursor-pointer text-[13px] text-zinc-700 dark:text-zinc-300">
               Allow public access via link
             </label>
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-[#e0e0e0] px-5 py-3">
+        <div className="flex justify-end gap-2 border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
           {shareUrl && (
             <a href={shareUrl} target="_blank" rel="noreferrer">
-              <button className="rounded border border-[#d0d0d0] bg-white px-4 py-2 text-[13px] text-[#333] hover:bg-[#f5f5f5] transition">
+              <button className="rounded border border-zinc-300 bg-white px-4 py-2 text-[13px] text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800">
                 Open in new tab
               </button>
             </a>
           )}
           <button
             onClick={onClose}
-            className="rounded bg-[#4472c4] px-5 py-2 text-[13px] font-medium text-white hover:bg-[#365fa0] transition"
+            className="rounded bg-zinc-800 px-5 py-2 text-[13px] font-medium text-white transition hover:bg-zinc-700 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-100"
           >
             Done
           </button>
