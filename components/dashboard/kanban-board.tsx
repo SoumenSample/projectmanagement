@@ -1,900 +1,7 @@
-// "use client"
-
-// import * as React from "react"
-// import { useSession } from "next-auth/react"
-// import {
-//   closestCenter,
-//   DndContext,
-//   KeyboardSensor,
-//   PointerSensor,
-//   useSensor,
-//   useSensors,
-//   type DragEndEvent,
-// } from "@dnd-kit/core"
-// import {
-//   SortableContext,
-//   arrayMove,
-//   horizontalListSortingStrategy,
-//   sortableKeyboardCoordinates,
-//   useSortable,
-//   verticalListSortingStrategy,
-// } from "@dnd-kit/sortable"
-// import { CSS } from "@dnd-kit/utilities"
-// import {
-//   CalendarDays,
-//   CircleDashed,
-//   GripVertical,
-//   KanbanSquare,
-//   MessageCircle,
-//   MoreHorizontal,
-//   Paperclip,
-//   Plus,
-// } from "lucide-react"
-
-// import {
-//   Avatar,
-//   AvatarFallback,
-//   AvatarGroup,
-// } from "@/components/ui/avatar"
-// import { Badge } from "@/components/ui/badge"
-// import { Button } from "@/components/ui/button"
-// import {
-//   CardContent,
-//   CardDescription,
-//   CardHeader,
-//   CardTitle,
-// } from "@/components/ui/card"
-// import {
-//   Dialog,
-//   DialogContent,
-//   DialogDescription,
-//   DialogFooter,
-//   DialogHeader,
-//   DialogTitle,
-// } from "@/components/ui/dialog"
-// import {
-//   DropdownMenu,
-//   DropdownMenuContent,
-//   DropdownMenuItem,
-//   DropdownMenuSeparator,
-//   DropdownMenuShortcut,
-//   DropdownMenuTrigger,
-// } from "@/components/ui/dropdown-menu"
-// import { Input } from "@/components/ui/input"
-// import { Separator } from "@/components/ui/separator"
-// import { Textarea } from "@/components/ui/textarea"
-// import { cn } from "@/lib/utils"
-
-// type TaskPriority = "low" | "medium" | "high"
-
-// type KanbanTask = {
-//   id: string
-//   title: string
-//   description: string
-//   priority: TaskPriority
-//   assignee: string
-//   assigneeInitials: string
-//   collaborators: { name: string; initials: string }[]
-//   dueDate: string
-//   tags: string[]
-//   comments: number
-//   attachments: number
-// }
-
-// type KanbanColumn = {
-//   id: string
-//   title: string
-//   tasks: KanbanTask[]
-// }
-
-// const initialColumns: KanbanColumn[] = [
-//   {
-//     id: "backlog",
-//     title: "Backlog",
-//     tasks: [
-//       {
-//         id: "task-1",
-//         title: "Map customer onboarding flow",
-//         description: "Document the first-touch journey and highlight the highest-friction steps.",
-//         priority: "high",
-//         assignee: "Maya",
-//         assigneeInitials: "M",
-//         collaborators: [
-//           { name: "Maya", initials: "M" },
-//           { name: "Noah", initials: "N" },
-//           { name: "Zoe", initials: "Z" },
-//         ],
-//         dueDate: "2026-05-08",
-//         tags: ["Research", "UX"],
-//         comments: 1,
-//         attachments: 2,
-//       },
-//       {
-//         id: "task-2",
-//         title: "Review sprint requests",
-//         description: "Triage incoming work and split it into actionable deliverables.",
-//         priority: "medium",
-//         assignee: "Noah",
-//         assigneeInitials: "N",
-//         collaborators: [
-//           { name: "Noah", initials: "N" },
-//           { name: "Ava", initials: "A" },
-//         ],
-//         dueDate: "2026-05-10",
-//         tags: ["Planning"],
-//         comments: 2,
-//         attachments: 0,
-//       },
-//     ],
-//   },
-//   {
-//     id: "in-progress",
-//     title: "In Progress",
-//     tasks: [
-//       {
-//         id: "task-3",
-//         title: "Ship kanban interactions",
-//         description: "Wire drag and drop, add-task actions, and live column updates.",
-//         priority: "high",
-//         assignee: "Ava",
-//         assigneeInitials: "A",
-//         collaborators: [
-//           { name: "Ava", initials: "A" },
-//           { name: "Maya", initials: "M" },
-//           { name: "Leo", initials: "L" },
-//           { name: "Zoe", initials: "Z" },
-//         ],
-//         dueDate: "2026-05-03",
-//         tags: ["Frontend", "Motion"],
-//         comments: 2,
-//         attachments: 6,
-//       },
-//       {
-//         id: "task-4",
-//         title: "Refine board spacing",
-//         description: "Tune card density and scroll behavior for larger project boards.",
-//         priority: "low",
-//         assignee: "Leo",
-//         assigneeInitials: "L",
-//         collaborators: [
-//           { name: "Leo", initials: "L" },
-//           { name: "Ava", initials: "A" },
-//         ],
-//         dueDate: "2026-05-12",
-//         tags: ["UI"],
-//         comments: 1,
-//         attachments: 0,
-//       },
-//     ],
-//   },
-//   {
-//     id: "done",
-//     title: "Done",
-//     tasks: [
-//       {
-//         id: "task-5",
-//         title: "Confirm release scope",
-//         description: "Lock the deliverables and publish the checklist for stakeholders.",
-//         priority: "medium",
-//         assignee: "Zoe",
-//         assigneeInitials: "Z",
-//         collaborators: [
-//           { name: "Zoe", initials: "Z" },
-//           { name: "Maya", initials: "M" },
-//           { name: "Noah", initials: "N" },
-//         ],
-//         dueDate: "2026-05-01",
-//         tags: ["Delivery"],
-//         comments: 2,
-//         attachments: 1,
-//       },
-//     ],
-//   },
-// ]
-
-// function formatDate(value: string) {
-//   return new Intl.DateTimeFormat("en-US", {
-//     month: "short",
-//     day: "numeric",
-//   }).format(new Date(value))
-// }
-
-// function createTaskId() {
-//   return `task-${crypto.randomUUID()}`
-// }
-
-// function createColumnId() {
-//   return `column-${crypto.randomUUID()}`
-// }
-
-// function getPriorityTone(priority: TaskPriority) {
-//   if (priority === "high") return "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-//   if (priority === "medium") return "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
-//   return "bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100"
-// }
-
-// function KanbanTaskCard({
-//   task,
-//   columnId,
-//   onEditTask,
-//   onDeleteTask,
-// }: {
-//   task: KanbanTask
-//   columnId: string
-//   onEditTask: (columnId: string, task: KanbanTask) => void
-//   onDeleteTask: (columnId: string, taskId: string) => void
-// }) {
-//   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-//     id: task.id,
-//     data: { type: "task", columnId },
-//   })
-
-//   return (
-//     <div
-//       ref={setNodeRef}
-//       style={{
-//         transform: CSS.Transform.toString(transform),
-//         transition: isDragging ? "none" : transition,
-//       }}
-//       className="group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10"
-//     >
-//       <CardHeader className="gap-3 border-b border-border/60 pb-3">
-//         <div className="flex items-start gap-2">
-//           <div
-//             {...attributes}
-//             {...listeners}
-//             className={cn(
-//               "mt-0.5 inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-md border border-border/60 bg-muted/60 text-muted-foreground active:cursor-grabbing"
-//             )}
-//             aria-label={`Move ${task.title}`}
-//           >
-//             <GripVertical className="size-4" />
-//           </div>
-//           <div className="min-w-0 flex-1">
-//             <div className="flex flex-wrap items-center gap-2">
-//               <Badge className={cn("rounded-md px-2 py-0.5 text-xs font-semibold", getPriorityTone(task.priority))}>
-//                 {task.tags[0] ?? "Task"}
-//               </Badge>
-//             </div>
-//             <CardTitle className="mt-2 text-base leading-5">{task.title}</CardTitle>
-//             <CardDescription className="mt-1 line-clamp-2 text-sm leading-5">
-//               {task.description}
-//             </CardDescription>
-//           </div>
-//           <DropdownMenu>
-//             <DropdownMenuTrigger asChild>
-//               <Button variant="ghost" size="icon-sm" className="shrink-0 rounded-full">
-//                 <MoreHorizontal className="size-4" />
-//                 <span className="sr-only">Task actions</span>
-//               </Button>
-//             </DropdownMenuTrigger>
-//             <DropdownMenuContent align="end" className="w-40">
-//               <DropdownMenuItem onClick={() => onEditTask(columnId, task)}>Edit</DropdownMenuItem>
-//               <DropdownMenuSeparator />
-//               <DropdownMenuItem variant="destructive" onClick={() => onDeleteTask(columnId, task.id)}>
-//                 Delete
-//                 <DropdownMenuShortcut>Del</DropdownMenuShortcut>
-//               </DropdownMenuItem>
-//             </DropdownMenuContent>
-//           </DropdownMenu>
-//         </div>
-//       </CardHeader>
-//       <CardContent className="space-y-4 pt-4">
-//         <div className="flex flex-wrap items-center gap-2">
-//           {task.tags.map((tag) => (
-//             <Badge key={tag} variant="outline" className="rounded-full border-border/70 bg-background/80 px-2.5 py-0.5 text-xs font-medium">
-//               {tag}
-//             </Badge>
-//           ))}
-//         </div>
-
-//         <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-//           <AvatarGroup>
-//             {task.collaborators.slice(0, 3).map((person) => (
-//               <Avatar key={`${task.id}-${person.initials}`} size="sm">
-//                 <AvatarFallback>{person.initials}</AvatarFallback>
-//               </Avatar>
-//             ))}
-//             {task.collaborators.length > 3 ? (
-//               <div className="-ml-2 flex h-6 items-center rounded-full border border-background bg-muted px-2 text-xs font-medium text-muted-foreground">
-//                 +{task.collaborators.length - 3}
-//               </div>
-//             ) : null}
-//           </AvatarGroup>
-
-//           <div className="flex items-center gap-4 text-xs">
-//             <span className="inline-flex items-center gap-1">
-//               <MessageCircle className="size-3.5" />
-//               {task.comments}
-//             </span>
-//             <span className="inline-flex items-center gap-1">
-//               <Paperclip className="size-3.5" />
-//               {task.attachments}
-//             </span>
-//           </div>
-//         </div>
-//       </CardContent>
-//     </div>
-//   )
-// }
-
-// function KanbanColumnCard({
-//   column,
-//   onAddTask,
-//   onDeleteColumn,
-//   onEditTask,
-//   onDeleteTask,
-// }: {
-//   column: KanbanColumn
-//   onAddTask: (columnId: string, task: Omit<KanbanTask, "id">) => void
-//   onDeleteColumn: (columnId: string) => void
-//   onEditTask: (columnId: string, task: KanbanTask) => void
-//   onDeleteTask: (columnId: string, taskId: string) => void
-// }) {
-//   const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({
-//     id: column.id,
-//     data: { type: "column" },
-//   })
-//   const [isComposerOpen, setIsComposerOpen] = React.useState(false)
-//   const [title, setTitle] = React.useState("")
-//   const [description, setDescription] = React.useState("")
-//   const [assignee, setAssignee] = React.useState("")
-//   const [dueDate, setDueDate] = React.useState("")
-//   const isCompletedColumn = column.id === "done"
-
-//   // users and role-aware assignee options
-//   const [users, setUsers] = React.useState<Array<{ id: string; name: string; role?: string }>>([])
-//   const { data: session } = useSession()
-
-//   React.useEffect(() => {
-//     let mounted = true
-//     ;(async () => {
-//       try {
-//         const res = await fetch("/api/users/list", { credentials: "include" })
-//         const json = await res.json()
-//         const apiUsers = Array.isArray(json?.users) ? json.users : []
-//         const mapped = apiUsers.map((u: any) => ({ id: u._id, name: u.name || u.email || "Unknown", role: u.role }))
-//         if (mounted) setUsers(mapped)
-//       } catch {
-//         // ignore
-//       }
-//     })()
-//     return () => { mounted = false }
-//   }, [])
-
-//   function getAssignableUsers() {
-//     const currentRole = (session as any)?.user?.role
-//     const currentId = (session as any)?.user?.id
-//     if (!currentRole) return users
-
-//     return users.filter((u) => {
-//       if (currentRole === "employee") {
-//         // employee can assign admins, other employees and himself
-//         return u.role === "admin" || u.role === "employee" || u.id === currentId
-//       }
-//       if (currentRole === "admin") {
-//         // admin can assign employees, clients and himself
-//         return u.role === "employee" || u.role === "client" || u.id === currentId
-//       }
-//       if (currentRole === "client") {
-//         // client can assign himself and admins
-//         return u.id === currentId || u.role === "admin"
-//       }
-
-//       return false
-//     })
-//   }
-
-//   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-//     event.preventDefault()
-//     if (!title.trim()) return
-
-//     const normalizedAssignee = assignee.trim() || "Unassigned"
-//     const assigneeInitials = normalizedAssignee
-//       .split(/\s+/)
-//       .filter(Boolean)
-//       .map((part) => part[0])
-//       .join("")
-//       .slice(0, 2)
-//       .toUpperCase() || "U"
-
-//     onAddTask(column.id, {
-//       title: title.trim(),
-//       description: description.trim(),
-//       priority: "medium",
-//       assignee: normalizedAssignee,
-//       assigneeInitials,
-//       collaborators: [{ name: normalizedAssignee, initials: assigneeInitials }],
-//       dueDate: dueDate || new Date().toISOString().slice(0, 10),
-//       tags: [column.title],
-//       comments: 0,
-//       attachments: 0,
-//     })
-
-//     setTitle("")
-//     setDescription("")
-//     setAssignee("")
-//     setDueDate("")
-//     setIsComposerOpen(false)
-//   }
-
-//   return (
-//     <div
-//       ref={setNodeRef}
-//       style={{
-//         transform: CSS.Transform.toString(transform),
-//         transition,
-//       }}
-//       className={cn(
-//         "group/card relative flex h-full min-h-[34rem] w-[22rem] shrink-0 flex-col overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 transition-shadow",
-//         isDragging && "opacity-50 ring-2 ring-primary/40 shadow-xl"
-//       )}
-//     >
-//       <CardHeader className="relative border-b border-border/60 pb-4">
-//         <div className="flex items-center gap-3">
-//           <button
-//             type="button"
-//             {...attributes}
-//             {...listeners}
-//             className="inline-flex h-9 w-9 cursor-grab items-center justify-center rounded-full border border-border/70 bg-background/80 text-muted-foreground transition hover:bg-muted active:cursor-grabbing"
-//             aria-label={`Move ${column.title}`}
-//           >
-//             <GripVertical className="size-4" />
-//           </button>
-//           <div className="min-w-0 flex-1">
-//             <CardTitle className="flex items-center gap-2 text-[1.05rem] font-semibold">
-//               <span className={cn(isCompletedColumn && "text-emerald-600 dark:text-emerald-400")}>{column.title}</span>
-
-//             </CardTitle>
-//           </div>
-//           <DropdownMenu>
-//             <DropdownMenuTrigger asChild>
-//               <Button variant="ghost" size="icon-sm" className="shrink-0 rounded-full">
-//                 <MoreHorizontal className="size-4" />
-//                 <span className="sr-only">Column actions</span>
-//               </Button>
-//             </DropdownMenuTrigger>
-//             <DropdownMenuContent align="end" className="w-44">
-//               <DropdownMenuItem onClick={() => setIsComposerOpen(true)}>Add task</DropdownMenuItem>
-//               <DropdownMenuSeparator />
-//               <DropdownMenuItem
-//                 className="text-destructive focus:text-destructive"
-//                 onClick={() => onDeleteColumn(column.id)}
-//               >
-//                 Delete column
-//                 <DropdownMenuShortcut>⌫</DropdownMenuShortcut>
-//               </DropdownMenuItem>
-//             </DropdownMenuContent>
-//           </DropdownMenu>
-//         </div>
-//       </CardHeader>
-
-//       <CardContent className="flex flex-1 flex-col gap-3 p-3">
-//         <SortableContext items={column.tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
-//           <div className="flex min-h-28 flex-1 flex-col gap-3">
-//             {column.tasks.map((task) => (
-//               <KanbanTaskCard
-//                 key={task.id}
-//                 task={task}
-//                 columnId={column.id}
-//                 onEditTask={onEditTask}
-//                 onDeleteTask={onDeleteTask}
-//               />
-//             ))}
-
-//             {column.tasks.length === 0 ? (
-//               <div className="flex min-h-32 flex-1 items-center justify-center rounded-xl border border-dashed border-border/60 bg-background/70 px-4 text-center text-sm text-muted-foreground">
-//                 Drop a task here or create a new one.
-//               </div>
-//             ) : null}
-//           </div>
-//         </SortableContext>
-
-//         {isComposerOpen ? (
-//           <form className="space-y-3 rounded-xl border border-border/70 bg-background p-3" onSubmit={handleSubmit}>
-//             <div className="grid gap-2">
-//               <Input
-//                 value={title}
-//                 onChange={(event) => setTitle(event.target.value)}
-//                 placeholder="Task title"
-//                 autoFocus
-//               />
-//               <Textarea
-//                 value={description}
-//                 onChange={(event) => setDescription(event.target.value)}
-//                 placeholder="Short task summary"
-//               />
-//               <div className="grid grid-cols-2 gap-2">
-//               {users.length > 0 ? (
-//                 <select
-//                   value={assignee}
-//                   onChange={(event) => setAssignee(event.target.value)}
-//                   className="w-full rounded-md border bg-background px-2 py-1"
-//                 >
-//                   <option value="">Unassigned</option>
-//                   {getAssignableUsers().map((u) => (
-//                     <option key={u.id} value={u.name}>
-//                       {u.name} {u.role ? `(${u.role})` : ""}
-//                     </option>
-//                   ))}
-//                 </select>
-//               ) : (
-//                 <Input
-//                   value={assignee}
-//                   onChange={(event) => setAssignee(event.target.value)}
-//                   placeholder="Assignee"
-//                 />
-//               )}
-//                 <Input
-//                   type="date"
-//                   value={dueDate}
-//                   onChange={(event) => setDueDate(event.target.value)}
-//                 />
-//               </div>
-//             </div>
-//             <div className="flex items-center gap-2">
-//               <Button type="submit" className="flex-1">
-//                 Add task
-//               </Button>
-//               <Button type="button" variant="ghost" onClick={() => setIsComposerOpen(false)}>
-//                 Cancel
-//               </Button>
-//             </div>
-//           </form>
-//         ) : (
-//           <Button
-//             type="button"
-//             variant="ghost"
-//             className="justify-start rounded-lg border border-dashed border-border/70"
-//             onClick={() => setIsComposerOpen(true)}
-//           >
-//             <Plus className="size-4" />
-//             Add task
-//           </Button>
-//         )}
-//       </CardContent>
-//     </div>
-//   )
-// }
-
-// export function KanbanBoard() {
-//   const [columns, setColumns] = React.useState<KanbanColumn[]>(initialColumns)
-//   const [newColumnTitle, setNewColumnTitle] = React.useState("")
-//   const [addingColumn, setAddingColumn] = React.useState(false)
-//   const [editingTask, setEditingTask] = React.useState<{ columnId: string; taskId: string } | null>(null)
-//   const [editTitle, setEditTitle] = React.useState("")
-//   const [editDescription, setEditDescription] = React.useState("")
-//   const [editAssignee, setEditAssignee] = React.useState("")
-//   const [editDueDate, setEditDueDate] = React.useState("")
-
-//   const sensors = useSensors(
-//     useSensor(PointerSensor, {
-//       activationConstraint: { distance: 4 },
-//     }),
-//     useSensor(KeyboardSensor, {
-//       coordinateGetter: sortableKeyboardCoordinates,
-//     })
-//   )
-
-//   const taskCount = columns.reduce((total, column) => total + column.tasks.length, 0)
-//   const doneCount = columns.find((column) => column.id === "done")?.tasks.length ?? 0
-
-//   function addTask(columnId: string, task: Omit<KanbanTask, "id">) {
-//     setColumns((current) =>
-//       current.map((column) =>
-//         column.id === columnId
-//           ? { ...column, tasks: [...column.tasks, { ...task, id: createTaskId() }] }
-//           : column
-//       )
-//     )
-//   }
-
-//   function addColumn() {
-//     const title = newColumnTitle.trim()
-//     if (!title) return
-
-//     setColumns((current) => [
-//       ...current,
-//       {
-//         id: createColumnId(),
-//         title,
-//         tasks: [],
-//       },
-//     ])
-//     setNewColumnTitle("")
-//     setAddingColumn(false)
-//   }
-
-//   function deleteColumn(columnId: string) {
-//     setColumns((current) => current.filter((column) => column.id !== columnId))
-//   }
-
-//   function openTaskEditor(columnId: string, task: KanbanTask) {
-//     setEditingTask({ columnId, taskId: task.id })
-//     setEditTitle(task.title)
-//     setEditDescription(task.description)
-//     setEditAssignee(task.assignee)
-//     setEditDueDate(task.dueDate)
-//   }
-
-//   function saveTaskEdit() {
-//     if (!editingTask) return
-
-//     const title = editTitle.trim()
-//     if (!title) return
-
-//     setColumns((current) =>
-//       current.map((column) => {
-//         if (column.id !== editingTask.columnId) return column
-
-//         return {
-//           ...column,
-//           tasks: column.tasks.map((task) =>
-//             task.id === editingTask.taskId
-//               ? {
-//                   ...task,
-//                   title,
-//                   description: editDescription.trim(),
-//                   assignee: editAssignee.trim() || "Unassigned",
-//                   dueDate: editDueDate || task.dueDate,
-//                 }
-//               : task
-//           ),
-//         }
-//       })
-//     )
-
-//     setEditingTask(null)
-//   }
-
-//   function deleteTask(columnId: string, taskId: string) {
-//     const shouldDelete = window.confirm("Delete this task?")
-//     if (!shouldDelete) return
-
-//     setColumns((current) =>
-//       current.map((column) =>
-//         column.id === columnId
-//           ? { ...column, tasks: column.tasks.filter((task) => task.id !== taskId) }
-//           : column
-//       )
-//     )
-//   }
-
-//   function handleDragEnd(event: DragEndEvent) {
-//     const { active, over } = event
-//     if (!over || active.id === over.id) return
-
-//     const activeType = active.data.current?.type
-
-//     if (activeType === "column") {
-//       const sourceIndex = columns.findIndex((column) => column.id === active.id)
-//       const destinationIndex = columns.findIndex((column) => column.id === over.id)
-
-//       if (sourceIndex === -1 || destinationIndex === -1 || sourceIndex === destinationIndex) {
-//         return
-//       }
-
-//       setColumns((current) => arrayMove(current, sourceIndex, destinationIndex))
-//       return
-//     }
-
-//     if (activeType !== "task") return
-
-//     const sourceColumnId = active.data.current?.columnId as string | undefined
-//     if (!sourceColumnId) return
-
-//     const sourceColumnIndex = columns.findIndex((column) => column.id === sourceColumnId)
-//     const sourceColumn = columns[sourceColumnIndex]
-//     if (!sourceColumn) return
-
-//     const activeTaskIndex = sourceColumn.tasks.findIndex((task) => task.id === active.id)
-//     if (activeTaskIndex === -1) return
-
-//     const overType = over.data.current?.type
-//     const destinationColumnId =
-//       (overType === "task" && (over.data.current?.columnId as string | undefined)) ||
-//       (overType === "column" ? (over.id as string) : undefined)
-
-//     if (!destinationColumnId) return
-
-//     const destinationColumnIndex = columns.findIndex((column) => column.id === destinationColumnId)
-//     const destinationColumn = columns[destinationColumnIndex]
-//     if (!destinationColumn) return
-
-//     const destinationTaskIndex =
-//       overType === "task"
-//         ? destinationColumn.tasks.findIndex((task) => task.id === over.id)
-//         : destinationColumn.tasks.length
-
-//     setColumns((current) => {
-//       const next = current.map((column) => ({ ...column, tasks: [...column.tasks] }))
-//       const source = next.find((column) => column.id === sourceColumnId)
-//       const destination = next.find((column) => column.id === destinationColumnId)
-
-//       if (!source || !destination) return current
-
-//       const [movedTask] = source.tasks.splice(activeTaskIndex, 1)
-//       if (!movedTask) return current
-
-//       movedTask.tags = Array.from(new Set([...movedTask.tags.filter(Boolean), destination.title]))
-//       movedTask.dueDate = movedTask.dueDate || new Date().toISOString().slice(0, 10)
-
-//       if (source.id === destination.id) {
-//         const targetIndex =
-//           destinationTaskIndex < 0 ? source.tasks.length : destinationTaskIndex
-//         source.tasks.splice(targetIndex, 0, movedTask)
-//       } else {
-//         const targetIndex = destinationTaskIndex < 0 ? destination.tasks.length : destinationTaskIndex
-//         destination.tasks.splice(targetIndex, 0, movedTask)
-//       }
-
-//       return next
-//     })
-//   }
-
-//   const completed = columns.find((column) => column.id === "done")?.tasks.length ?? 0
-
-//   // users for edit dialog and role filtering
-//   const { data: session } = useSession()
-//   const [users, setUsers] = React.useState<Array<{ id: string; name: string; role?: string }>>([])
-
-//   React.useEffect(() => {
-//     let mounted = true
-//     ;(async () => {
-//       try {
-//         const res = await fetch("/api/users/list", { credentials: "include" })
-//         const json = await res.json()
-//         const apiUsers = Array.isArray(json?.users) ? json.users : []
-//         const mapped = apiUsers.map((u: any) => ({ id: u._id, name: u.name || u.email || "Unknown", role: u.role }))
-//         if (mounted) setUsers(mapped)
-//       } catch {
-//         // ignore
-//       }
-//     })()
-//     return () => { mounted = false }
-//   }, [])
-
-//   function getAssignableUsersForEditor() {
-//     const currentRole = (session as any)?.user?.role
-//     const currentId = (session as any)?.user?.id
-//     if (!currentRole) return users
-
-//     return users.filter((u) => {
-//       if (currentRole === "employee") return u.role === "admin" || u.role === "employee" || u.id === currentId
-//       if (currentRole === "admin") return u.role === "employee" || u.role === "client" || u.id === currentId
-//       if (currentRole === "client") return u.id === currentId || u.role === "admin"
-//       return false
-//     })
-//   }
-
-//   return (
-//     <div className="w-full overflow-x-auto pb-4">
-//       <div className="min-w-max">
-//         <DndContext
-//           sensors={sensors}
-//           collisionDetection={closestCenter}
-//           onDragEnd={handleDragEnd}
-//         >
-//           <SortableContext items={columns.map((column) => column.id)} strategy={horizontalListSortingStrategy}>
-//             <div className="flex min-h-[36rem] w-max items-start gap-4 pb-2">
-//               {columns.map((column) => (
-//                 <KanbanColumnCard
-//                   key={column.id}
-//                   column={column}
-//                   onAddTask={addTask}
-//                   onDeleteColumn={deleteColumn}
-//                   onEditTask={openTaskEditor}
-//                   onDeleteTask={deleteTask}
-//                 />
-//               ))}
-
-//               {/* Add New Column — inline at end */}
-//               <div className="flex w-[22rem] shrink-0 flex-col">
-//                 {addingColumn ? (
-//                   <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-3 shadow-sm">
-//                     <Input
-//                       value={newColumnTitle}
-//                       onChange={(event) => setNewColumnTitle(event.target.value)}
-//                       placeholder="Column title"
-//                       className="bg-background"
-//                       autoFocus
-//                       onKeyDown={(e) => {
-//                         if (e.key === "Enter") addColumn()
-//                         if (e.key === "Escape") { setAddingColumn(false); setNewColumnTitle("") }
-//                       }}
-//                     />
-//                     <div className="flex gap-2">
-//                       <Button type="button" onClick={addColumn} className="flex-1">
-//                         Add column
-//                       </Button>
-//                       <Button
-//                         type="button"
-//                         variant="ghost"
-//                         onClick={() => { setAddingColumn(false); setNewColumnTitle("") }}
-//                       >
-//                         Cancel
-//                       </Button>
-//                     </div>
-//                   </div>
-//                 ) : (
-//                   <button
-//                     type="button"
-//                     onClick={() => setAddingColumn(true)}
-//                     className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card/60 text-sm font-medium text-muted-foreground transition-colors hover:border-border/80 hover:bg-card hover:text-foreground"
-//                   >
-//                     <Plus className="size-4" />
-//                     Add New Column
-//                   </button>
-//                 )}
-//               </div>
-//             </div>
-//           </SortableContext>
-//         </DndContext>
-//       </div>
-
-//       <Dialog open={Boolean(editingTask)} onOpenChange={(open) => !open && setEditingTask(null)}>
-//         <DialogContent>
-//           <DialogHeader>
-//             <DialogTitle>Edit task</DialogTitle>
-//             <DialogDescription>Update the task details and save the changes.</DialogDescription>
-//           </DialogHeader>
-
-//           <div className="grid gap-3">
-//             <Input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} placeholder="Task title" />
-//             <Textarea
-//               value={editDescription}
-//               onChange={(event) => setEditDescription(event.target.value)}
-//               placeholder="Task description"
-//             />
-//             <div className="grid grid-cols-2 gap-2">
-//               {users.length > 0 ? (
-//                 <select
-//                   value={editAssignee}
-//                   onChange={(event) => setEditAssignee(event.target.value)}
-//                   className="w-full rounded-md border bg-background px-2 py-1"
-//                 >
-//                   <option value="">Unassigned</option>
-//                   {getAssignableUsersForEditor().map((u) => (
-//                     <option key={u.id} value={u.name}>
-//                       {u.name} {u.role ? `(${u.role})` : ""}
-//                     </option>
-//                   ))}
-//                 </select>
-//               ) : (
-//                 <Input
-//                   value={editAssignee}
-//                   onChange={(event) => setEditAssignee(event.target.value)}
-//                   placeholder="Assignee"
-//                 />
-//               )}
-//               <Input
-//                 type="date"
-//                 value={editDueDate}
-//                 onChange={(event) => setEditDueDate(event.target.value)}
-//               />
-//             </div>
-//           </div>
-
-//           <DialogFooter>
-//             <Button type="button" variant="ghost" onClick={() => setEditingTask(null)}>
-//               Cancel
-//             </Button>
-//             <Button type="button" onClick={saveTaskEdit}>
-//               Save changes
-//             </Button>
-//           </DialogFooter>
-//         </DialogContent>
-//       </Dialog>
-//     </div>
-//   )
-// }
-
-
-
-
 "use client"
 
 import * as React from "react"
+
 import { useSession } from "next-auth/react"
 import {
   DndContext,
@@ -923,6 +30,7 @@ import {
   MoreHorizontal,
   Paperclip,
   Plus,
+  UserCircle,
 } from "lucide-react"
 
 import {
@@ -968,12 +76,15 @@ type KanbanTask = {
   description: string
   priority: TaskPriority
   assignee: string
+  assigneeId: string
   assigneeInitials: string
   collaborators: { name: string; initials: string }[]
   dueDate: string
   tags: string[]
   comments: number
   attachments: number
+  createdByName: string
+  createdById: string
 }
 
 type KanbanColumn = {
@@ -982,139 +93,66 @@ type KanbanColumn = {
   tasks: KanbanTask[]
 }
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
+type UserEntry = { id: string; name: string; role?: string }
+
+// ─── Seed / fallback ──────────────────────────────────────────────────────────
 
 const initialColumns: KanbanColumn[] = [
-  {
-    id: "backlog",
-    title: "Backlog",
-    tasks: [
-      {
-        id: "task-1",
-        title: "Map customer onboarding flow",
-        description: "Document the first-touch journey and highlight the highest-friction steps.",
-        priority: "high",
-        assignee: "Maya",
-        assigneeInitials: "M",
-        collaborators: [
-          { name: "Maya", initials: "M" },
-          { name: "Noah", initials: "N" },
-          { name: "Zoe", initials: "Z" },
-        ],
-        dueDate: "2026-05-08",
-        tags: ["Research", "UX"],
-        comments: 1,
-        attachments: 2,
-      },
-      {
-        id: "task-2",
-        title: "Review sprint requests",
-        description: "Triage incoming work and split it into actionable deliverables.",
-        priority: "medium",
-        assignee: "Noah",
-        assigneeInitials: "N",
-        collaborators: [
-          { name: "Noah", initials: "N" },
-          { name: "Ava", initials: "A" },
-        ],
-        dueDate: "2026-05-10",
-        tags: ["Planning"],
-        comments: 2,
-        attachments: 0,
-      },
-    ],
-  },
-  {
-    id: "in-progress",
-    title: "In Progress",
-    tasks: [
-      {
-        id: "task-3",
-        title: "Ship kanban interactions",
-        description: "Wire drag and drop, add-task actions, and live column updates.",
-        priority: "high",
-        assignee: "Ava",
-        assigneeInitials: "A",
-        collaborators: [
-          { name: "Ava", initials: "A" },
-          { name: "Maya", initials: "M" },
-          { name: "Leo", initials: "L" },
-          { name: "Zoe", initials: "Z" },
-        ],
-        dueDate: "2026-05-03",
-        tags: ["Frontend", "Motion"],
-        comments: 2,
-        attachments: 6,
-      },
-      {
-        id: "task-4",
-        title: "Refine board spacing",
-        description: "Tune card density and scroll behavior for larger project boards.",
-        priority: "low",
-        assignee: "Leo",
-        assigneeInitials: "L",
-        collaborators: [
-          { name: "Leo", initials: "L" },
-          { name: "Ava", initials: "A" },
-        ],
-        dueDate: "2026-05-12",
-        tags: ["UI"],
-        comments: 1,
-        attachments: 0,
-      },
-    ],
-  },
-  {
-    id: "done",
-    title: "Done",
-    tasks: [
-      {
-        id: "task-5",
-        title: "Confirm release scope",
-        description: "Lock the deliverables and publish the checklist for stakeholders.",
-        priority: "medium",
-        assignee: "Zoe",
-        assigneeInitials: "Z",
-        collaborators: [
-          { name: "Zoe", initials: "Z" },
-          { name: "Maya", initials: "M" },
-          { name: "Noah", initials: "N" },
-        ],
-        dueDate: "2026-05-01",
-        tags: ["Delivery"],
-        comments: 2,
-        attachments: 1,
-      },
-    ],
-  },
+  { id: "backlog", title: "Backlog", tasks: [] },
+  { id: "in-progress", title: "In Progress", tasks: [] },
+  { id: "done", title: "Done", tasks: [] },
 ]
 
+// ─── API helpers ──────────────────────────────────────────────────────────────
+
+async function fetchColumns(): Promise<KanbanColumn[] | null> {
+  try {
+    const res = await fetch("/api/kanban", {
+      cache: "no-store",
+      credentials: "include",
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return Array.isArray(data.columns) ? data.columns : null
+  } catch {
+    return null
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(value))
-}
-
-function createTaskId() {
-  return `task-${crypto.randomUUID()}`
-}
 
 function createColumnId() {
   return `column-${crypto.randomUUID()}`
 }
 
+function makeInitials(name = "") {
+  return (name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+}
+
 function getPriorityTone(priority: TaskPriority) {
-  if (priority === "high") return "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-  if (priority === "medium") return "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+  if (priority === "high")
+    return "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+  if (priority === "medium")
+    return "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
   return "bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100"
 }
 
-/**
- * Given the full columns array and a draggable task id, return which column
- * owns that task (or undefined).
- */
-function findColumnByTaskId(columns: KanbanColumn[], taskId: string): KanbanColumn | undefined {
+function findColumnByTaskId(
+  columns: KanbanColumn[],
+  taskId: string
+): KanbanColumn | undefined {
   return columns.find((col) => col.tasks.some((t) => t.id === taskId))
+}
+
+function isKnownColumnId(columns: KanbanColumn[], value: string): boolean {
+  return columns.some((col) => col.id === value)
 }
 
 // ─── Task card (sortable) ─────────────────────────────────────────────────────
@@ -1132,7 +170,14 @@ function KanbanTaskCard({
   onDeleteTask: (columnId: string, taskId: string) => void
   isOverlay?: boolean
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: task.id,
     data: { type: "task", columnId },
   })
@@ -1162,24 +207,48 @@ function KanbanTaskCard({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className={cn("rounded-md px-2 py-0.5 text-xs font-semibold", getPriorityTone(task.priority))}>
+              <Badge
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-xs font-semibold",
+                  getPriorityTone(task.priority)
+                )}
+              >
                 {task.tags[0] ?? "Task"}
               </Badge>
             </div>
-            <CardTitle className="mt-2 text-base leading-5">{task.title}</CardTitle>
-            <CardDescription className="mt-1 line-clamp-2 text-sm leading-5">{task.description}</CardDescription>
+            <CardTitle className="mt-2 text-base leading-5">
+              {task.title}
+            </CardTitle>
+            <CardDescription className="mt-1 line-clamp-2 text-sm leading-5">
+              {task.description}
+            </CardDescription>
+            {task.createdByName && (
+              <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground/70">
+                <UserCircle className="size-3" />
+                Created by {task.createdByName}
+              </p>
+            )}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="shrink-0 rounded-full">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 rounded-full"
+              >
                 <MoreHorizontal className="size-4" />
                 <span className="sr-only">Task actions</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => onEditTask(columnId, task)}>Edit</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEditTask(columnId, task)}>
+                Edit
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => onDeleteTask(columnId, task.id)}>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => onDeleteTask(columnId, task.id)}
+              >
                 Delete
                 <DropdownMenuShortcut>Del</DropdownMenuShortcut>
               </DropdownMenuItem>
@@ -1237,6 +306,8 @@ function KanbanColumnCard({
   onEditTask,
   onDeleteTask,
   isOverlay = false,
+  users,
+  session,
 }: {
   column: KanbanColumn
   onAddTask: (columnId: string, task: Omit<KanbanTask, "id">) => void
@@ -1244,8 +315,17 @@ function KanbanColumnCard({
   onEditTask: (columnId: string, task: KanbanTask) => void
   onDeleteTask: (columnId: string, taskId: string) => void
   isOverlay?: boolean
+  users: UserEntry[]
+  session: any
 }) {
-  const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({
+  const {
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+    attributes,
+    listeners,
+  } = useSortable({
     id: column.id,
     data: { type: "column" },
   })
@@ -1253,77 +333,54 @@ function KanbanColumnCard({
   const [isComposerOpen, setIsComposerOpen] = React.useState(false)
   const [title, setTitle] = React.useState("")
   const [description, setDescription] = React.useState("")
-  const [assignee, setAssignee] = React.useState("")
+  const [assigneeId, setAssigneeId] = React.useState("")
   const [dueDate, setDueDate] = React.useState("")
   const isCompletedColumn = column.id === "done"
 
-  const [users, setUsers] = React.useState<Array<{ id: string; name: string; role?: string }>>([])
-  const { data: session } = useSession()
-
-  React.useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        const res = await fetch("/api/users/list", { credentials: "include" })
-        const json = await res.json()
-        const apiUsers = Array.isArray(json?.users) ? json.users : []
-        const mapped = apiUsers.map((u: any) => ({
-          id: u._id,
-          name: u.name || u.email || "Unknown",
-          role: u.role,
-        }))
-        if (mounted) setUsers(mapped)
-      } catch {
-        // ignore
-      }
-    })()
-    return () => {
-      mounted = false
-    }
-  }, [])
-
   function getAssignableUsers() {
-    const currentRole = (session as any)?.user?.role
-    const currentId = (session as any)?.user?.id
+    const currentRole = session?.user?.role
+    const currentId = session?.user?.id
     if (!currentRole) return users
     return users.filter((u) => {
-      if (currentRole === "employee") return u.role === "admin" || u.role === "employee" || u.id === currentId
-      if (currentRole === "admin") return u.role === "employee" || u.role === "client" || u.id === currentId
-      if (currentRole === "client") return u.id === currentId || u.role === "admin"
+      if (currentRole === "employee")
+        return u.role === "admin" || u.role === "employee" || u.id === currentId
+      if (currentRole === "admin")
+        return u.role === "employee" || u.role === "client" || u.id === currentId
+      if (currentRole === "client")
+        return u.id === currentId || u.role === "admin"
       return false
     })
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!title.trim()) return
-
-    const normalizedAssignee = assignee.trim() || "Unassigned"
-    const assigneeInitials =
-      normalizedAssignee
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((part) => part[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() || "U"
-
-    onAddTask(column.id, {
+  function buildTaskPayload(): Omit<KanbanTask, "id"> {
+    const selectedUser = users.find((u) => u.id === assigneeId)
+    const resolvedName = selectedUser?.name ?? ""
+    const resolvedInitials = makeInitials(resolvedName)
+    return {
       title: title.trim(),
       description: description.trim(),
       priority: "medium",
-      assignee: normalizedAssignee,
-      assigneeInitials,
-      collaborators: [{ name: normalizedAssignee, initials: assigneeInitials }],
+      assignee: resolvedName,
+      assigneeId: selectedUser?.id ?? "",
+      assigneeInitials: resolvedInitials,
+      collaborators: resolvedName
+        ? [{ name: resolvedName, initials: resolvedInitials }]
+        : [],
       dueDate: dueDate || new Date().toISOString().slice(0, 10),
       tags: [column.title],
       comments: 0,
       attachments: 0,
-    })
+      createdByName: "",
+      createdById: "",
+    }
+  }
 
+  function handleAddTask() {
+    if (!title.trim()) return
+    onAddTask(column.id, buildTaskPayload())
     setTitle("")
     setDescription("")
-    setAssignee("")
+    setAssigneeId("")
     setDueDate("")
     setIsComposerOpen(false)
   }
@@ -1354,20 +411,33 @@ function KanbanColumnCard({
           </button>
           <div className="min-w-0 flex-1">
             <CardTitle className="flex items-center gap-2 text-[1.05rem] font-semibold">
-              <span className={cn(isCompletedColumn && "text-emerald-600 dark:text-emerald-400")}>
+              <span
+                className={cn(
+                  isCompletedColumn && "text-emerald-600 dark:text-emerald-400"
+                )}
+              >
                 {column.title}
+              </span>
+              <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                {column.tasks.length}
               </span>
             </CardTitle>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="shrink-0 rounded-full">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 rounded-full"
+              >
                 <MoreHorizontal className="size-4" />
                 <span className="sr-only">Column actions</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={() => setIsComposerOpen(true)}>Add task</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsComposerOpen(true)}>
+                Add task
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
@@ -1382,7 +452,10 @@ function KanbanColumnCard({
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col gap-3 p-3">
-        <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={column.tasks.map((t) => t.id)}
+          strategy={verticalListSortingStrategy}
+        >
           <div className="flex min-h-28 flex-1 flex-col gap-3">
             {column.tasks.map((task) => (
               <KanbanTaskCard
@@ -1402,52 +475,57 @@ function KanbanColumnCard({
         </SortableContext>
 
         {isComposerOpen ? (
-          <form className="space-y-3 rounded-xl border border-border/70 bg-background p-3" onSubmit={handleSubmit}>
+          <div className="space-y-3 rounded-xl border border-border/70 bg-background p-3">
             <div className="grid gap-2">
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
                 autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); handleAddTask() }
+                  if (e.key === "Escape") setIsComposerOpen(false)
+                }}
               />
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Short task summary"
+                rows={2}
               />
               <div className="grid grid-cols-2 gap-2">
-                {users.length > 0 ? (
-                  <select
-                    value={assignee}
-                    onChange={(e) => setAssignee(e.target.value)}
-                    className="w-full rounded-md border bg-background px-2 py-1"
-                  >
-                    <option value="">Unassigned</option>
-                    {getAssignableUsers().map((u) => (
-                      <option key={u.id} value={u.name}>
-                        {u.name} {u.role ? `(${u.role})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <Input
-                    value={assignee}
-                    onChange={(e) => setAssignee(e.target.value)}
-                    placeholder="Assignee"
-                  />
-                )}
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <select
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  className="w-full rounded-md border bg-background px-2 py-1 text-sm"
+                >
+                  <option value="">Auto-assign (me)</option>
+                  {getAssignableUsers().map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} {u.role ? `(${u.role})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="submit" className="flex-1">
+              <Button type="button" className="flex-1" onClick={handleAddTask}>
                 Add task
               </Button>
-              <Button type="button" variant="ghost" onClick={() => setIsComposerOpen(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsComposerOpen(false)}
+              >
                 Cancel
               </Button>
             </div>
-          </form>
+          </div>
         ) : (
           <Button
             type="button"
@@ -1468,53 +546,92 @@ function KanbanColumnCard({
 
 export function KanbanBoard() {
   const [columns, setColumns] = React.useState<KanbanColumn[]>(initialColumns)
+  const [mounted, setMounted] = React.useState(false)
   const [newColumnTitle, setNewColumnTitle] = React.useState("")
   const [addingColumn, setAddingColumn] = React.useState(false)
 
-  // active drag state — needed for DragOverlay
-  const [activeTask, setActiveTask] = React.useState<{ task: KanbanTask; columnId: string } | null>(null)
+  // columnsRef always mirrors `columns` so drag handlers never read stale state
+  const columnsRef = React.useRef<KanbanColumn[]>(columns)
+  React.useEffect(() => {
+    columnsRef.current = columns
+  }, [columns])
+
+  // active drag state
+  const [activeTask, setActiveTask] = React.useState<{
+    task: KanbanTask
+    columnId: string
+  } | null>(null)
   const [activeColumn, setActiveColumn] = React.useState<KanbanColumn | null>(null)
 
   // edit dialog
-  const [editingTask, setEditingTask] = React.useState<{ columnId: string; taskId: string } | null>(null)
+  const [editingTask, setEditingTask] = React.useState<{
+    columnId: string
+    taskId: string
+  } | null>(null)
   const [editTitle, setEditTitle] = React.useState("")
   const [editDescription, setEditDescription] = React.useState("")
-  const [editAssignee, setEditAssignee] = React.useState("")
+  const [editAssigneeId, setEditAssigneeId] = React.useState("")
   const [editDueDate, setEditDueDate] = React.useState("")
 
   const { data: session } = useSession()
-  const [users, setUsers] = React.useState<Array<{ id: string; name: string; role?: string }>>([])
+  const [users, setUsers] = React.useState<UserEntry[]>([])
 
+  // Guard against duplicate in-flight PATCHes for the same drag gesture
+  const dragPatchInFlight = React.useRef(false)
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // FIX (core): We store the task's ORIGINAL column at drag-start, so that
+  // handleDragEnd always knows the DB-persisted column to PATCH from/to.
+  // After dragOver moves the task visually, columnsRef is updated — but we
+  // still need the *destination* column. We resolve it from columnsRef at
+  // drag-end time (after all dragOver mutations have settled), not from the
+  // stale `over.data.current?.columnId` which is frozen at drag-start.
+  // ─────────────────────────────────────────────────────────────────────────────
+  const dragOriginColumnId = React.useRef<string>("")
+
+  React.useEffect(() => { setMounted(true) }, [])
+
+  // Load board data on mount
   React.useEffect(() => {
-    let mounted = true
+    let active = true
+    ;(async () => {
+      const cols = await fetchColumns()
+      if (!active) return
+      setColumns(cols ?? initialColumns)
+    })()
+    return () => { active = false }
+  }, [])
+
+  // Load users once
+  React.useEffect(() => {
+    let active = true
     ;(async () => {
       try {
         const res = await fetch("/api/users/list", { credentials: "include" })
         const json = await res.json()
         const apiUsers = Array.isArray(json?.users) ? json.users : []
-        const mapped = apiUsers.map((u: any) => ({
+        const mapped: UserEntry[] = apiUsers.map((u: any) => ({
           id: u._id,
           name: u.name || u.email || "Unknown",
           role: u.role,
         }))
-        if (mounted) setUsers(mapped)
-      } catch {
-        // ignore
-      }
+        if (active) setUsers(mapped)
+      } catch { /* ignore */ }
     })()
-    return () => {
-      mounted = false
-    }
+    return () => { active = false }
   }, [])
 
-  function getAssignableUsersForEditor() {
+  function getAssignableUsersForEditor(): UserEntry[] {
     const currentRole = (session as any)?.user?.role
     const currentId = (session as any)?.user?.id
     if (!currentRole) return users
     return users.filter((u) => {
-      if (currentRole === "employee") return u.role === "admin" || u.role === "employee" || u.id === currentId
-      if (currentRole === "admin") return u.role === "employee" || u.role === "client" || u.id === currentId
-      if (currentRole === "client") return u.id === currentId || u.role === "admin"
+      if (currentRole === "employee")
+        return u.role === "admin" || u.role === "employee" || u.id === currentId
+      if (currentRole === "admin")
+        return u.role === "employee" || u.role === "client" || u.id === currentId
+      if (currentRole === "client")
+        return u.id === currentId || u.role === "admin"
       return false
     })
   }
@@ -1530,161 +647,286 @@ export function KanbanBoard() {
     const type = event.active.data.current?.type
 
     if (type === "column") {
-      const col = columns.find((c) => c.id === event.active.id)
+      const col = columnsRef.current.find((c) => c.id === event.active.id)
       setActiveColumn(col ?? null)
       setActiveTask(null)
+      dragOriginColumnId.current = ""
       return
     }
 
     if (type === "task") {
       const columnId = event.active.data.current?.columnId as string
-      const col = columns.find((c) => c.id === columnId)
+      const col = columnsRef.current.find((c) => c.id === columnId)
       const task = col?.tasks.find((t) => t.id === event.active.id)
-      if (task) setActiveTask({ task, columnId })
+      if (task) {
+        setActiveTask({ task, columnId })
+        // FIX: record where the task started so dragEnd can compute the right destination
+        dragOriginColumnId.current = columnId
+      }
       setActiveColumn(null)
     }
   }
 
-  // ── Drag over (live reorder while dragging) ─────────────────────────────────
-  //
-  // This is the KEY fix: we update column state during the drag so the ghost
-  // placeholder appears in the correct slot in real time. Without this,
-  // dnd-kit only commits the drop position on dragEnd which feels laggy and
-  // broken for cross-column moves.
+  // ── Drag over (live visual reorder while dragging) ──────────────────────────
 
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
     const activeType = active.data.current?.type
-    if (activeType !== "task") return // column reorder handled in dragEnd only
+    if (activeType !== "task") return
 
-    const activeColumnId = active.data.current?.columnId as string
+    // FIX: always read from columnsRef — never from stale `active.data.current.columnId`
+    // After the first dragOver fires and moves the task, the data attached to the
+    // active item no longer reflects the current column. Use columnsRef instead.
+    const latestColumns = columnsRef.current
+    const activeColNow = findColumnByTaskId(latestColumns, String(active.id))
+    if (!activeColNow) return
+
     const overType = over.data.current?.type
-
-    // The column that "over" belongs to
     const overColumnId: string =
       overType === "task"
         ? (over.data.current?.columnId as string)
         : overType === "column"
-          ? (over.id as string)
-          : ""
+        ? (over.id as string)
+        : isKnownColumnId(latestColumns, String(over.id))
+        ? String(over.id)
+        : ""
 
-    if (!activeColumnId || !overColumnId) return
-    if (activeColumnId === overColumnId) {
-      // Same-column reorder — handled in dragEnd
-      return
-    }
+    if (!overColumnId) return
+    if (activeColNow.id === overColumnId) return // same column — handled in dragEnd
 
-    // Cross-column move: splice active task into target column immediately
     setColumns((current) => {
       const next = current.map((col) => ({ ...col, tasks: [...col.tasks] }))
 
-      const sourceCol = next.find((c) => c.id === activeColumnId)
+      const sourceCol = next.find((c) => c.id === activeColNow.id)
       const destCol = next.find((c) => c.id === overColumnId)
       if (!sourceCol || !destCol) return current
 
       const activeIndex = sourceCol.tasks.findIndex((t) => t.id === active.id)
-      if (activeIndex === -1) return current
+      if (activeIndex === -1) return current // already moved
 
       const [movedTask] = sourceCol.tasks.splice(activeIndex, 1)
       if (!movedTask) return current
 
-      // Insert at the position of the "over" task, or append if over a column
       const overIndex =
-        overType === "task" ? destCol.tasks.findIndex((t) => t.id === over.id) : destCol.tasks.length
+        overType === "task"
+          ? destCol.tasks.findIndex((t) => t.id === over.id)
+          : destCol.tasks.length
 
       destCol.tasks.splice(overIndex < 0 ? destCol.tasks.length : overIndex, 0, movedTask)
 
-      // Keep columnId in sync so subsequent events are correct
-      // (dnd-kit reads from data.current which is set on the sortable hook,
-      //  but we also track columnId in our own state via the task list)
-
       return next
     })
-
-    // Update the active item's columnId in the dnd-kit data so future
-    // dragOver events resolve correctly. We do this by updating our React
-    // state — the useSortable hook inside KanbanTaskCard re-renders with the
-    // new columnId prop.
   }
 
-  // ── Drag end (finalise position) ────────────────────────────────────────────
+  // ── Drag end (finalise + persist) ───────────────────────────────────────────
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveTask(null)
     setActiveColumn(null)
 
     const { active, over } = event
-    if (!over || active.id === over.id) return
+    if (!over) return
 
     const activeType = active.data.current?.type
 
     // ── Column reorder ──────────────────────────────────────────────────────
     if (activeType === "column") {
+      if (active.id === over.id) return
+
       setColumns((current) => {
         const fromIndex = current.findIndex((c) => c.id === active.id)
         const toIndex = current.findIndex((c) => c.id === over.id)
-        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return current
-        return arrayMove(current, fromIndex, toIndex)
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex)
+          return current
+
+        const next = arrayMove(current, fromIndex, toIndex)
+
+        ;(async () => {
+          try {
+            await fetch("/api/kanban", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                action: "reorderColumns",
+                orderedIds: next.map((c) => c.id),
+              }),
+            })
+          } catch { /* non-critical */ }
+        })()
+
+        return next
       })
       return
     }
 
-    // ── Task reorder (same column only — cross-column already done in dragOver) ─
-    if (activeType === "task") {
+    // ── Task drop ───────────────────────────────────────────────────────────
+    if (activeType !== "task") return
+
+    // FIX: resolve the destination column from columnsRef AFTER all dragOver
+    // mutations have already settled — this is the actual column the task is in now.
+    const latestColumns = columnsRef.current
+    const destinationCol = findColumnByTaskId(latestColumns, String(active.id))
+    if (!destinationCol) return
+
+    const finalColumnId = destinationCol.id
+    const originColumnId = dragOriginColumnId.current
+
+    // ── Same-column reorder ─────────────────────────────────────────────────
+    if (finalColumnId === originColumnId) {
+      // dragOver doesn't handle same-column reorder — do it here
       const overType = over.data.current?.type
-      if (overType !== "task") return // dropped onto column header after cross-move; already placed
+      if (overType !== "task" || active.id === over.id) return
 
-      const activeColumnId = active.data.current?.columnId as string
-      const overColumnId = over.data.current?.columnId as string
-
-      if (activeColumnId !== overColumnId) return // already moved in dragOver
-
-      // Same-column reorder
       setColumns((current) => {
         const next = current.map((col) => ({ ...col, tasks: [...col.tasks] }))
-        const col = next.find((c) => c.id === activeColumnId)
+        const col = next.find((c) => c.id === finalColumnId)
         if (!col) return current
 
         const fromIndex = col.tasks.findIndex((t) => t.id === active.id)
         const toIndex = col.tasks.findIndex((t) => t.id === over.id)
-        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return current
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex)
+          return current
 
         col.tasks = arrayMove(col.tasks, fromIndex, toIndex)
         return next
       })
+      // Same-column reorder — no PATCH needed (order within a column isn't persisted)
+      return
     }
+
+    // ── Cross-column: dragOver already updated local state visually ─────────
+    // Now persist the new columnId to the server.
+    if (dragPatchInFlight.current) return
+    dragPatchInFlight.current = true
+
+    ;(async () => {
+      try {
+        const res = await fetch("/api/kanban", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            // FIX: send the task id and the RESOLVED destination columnId from
+            // columnsRef — NOT from over.data.current which is frozen at drag-start
+            id: String(active.id),
+            columnId: finalColumnId,
+          }),
+        })
+
+        if (res.ok) {
+          // Refresh from server to confirm persistence (don't re-apply visually)
+          const cols = await fetchColumns()
+          if (cols) setColumns(cols)
+        } else {
+          // Server rejected — revert to server state
+          const cols = await fetchColumns()
+          if (cols) setColumns(cols)
+        }
+      } catch {
+        // Network error — revert to server state
+        const cols = await fetchColumns()
+        if (cols) setColumns(cols)
+      } finally {
+        dragPatchInFlight.current = false
+        dragOriginColumnId.current = ""
+      }
+    })()
   }
 
   // ── Board mutations ─────────────────────────────────────────────────────────
 
-  function addTask(columnId: string, task: Omit<KanbanTask, "id">) {
+  async function addTask(columnId: string, task: Omit<KanbanTask, "id">) {
+    try {
+      const payload: Record<string, unknown> = {
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        assigneeId: task.assigneeId || undefined,
+        assigneeName: task.assignee || undefined,
+        assigneeInitials: task.assigneeInitials || undefined,
+        collaborators: task.collaborators,
+        dueDate: task.dueDate || undefined,
+        tags: task.tags,
+        columnId,
+      }
+
+      const res = await fetch("/api/kanban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      })
+
+      if (res.ok) {
+        const cols = await fetchColumns()
+        if (cols) { setColumns(cols); return }
+      }
+    } catch { /* fallthrough */ }
+
+    // Optimistic local update as fallback
     setColumns((current) =>
       current.map((col) =>
-        col.id === columnId ? { ...col, tasks: [...col.tasks, { ...task, id: createTaskId() }] } : col
+        col.id === columnId
+          ? {
+              ...col,
+              tasks: [
+                ...col.tasks,
+                {
+                  ...task,
+                  id: `task-${crypto.randomUUID()}`,
+                  createdByName: (session as any)?.user?.name ?? "",
+                  createdById: (session as any)?.user?.id ?? "",
+                },
+              ],
+            }
+          : col
       )
     )
   }
 
-  function addColumn() {
+  async function addColumn() {
     const title = newColumnTitle.trim()
     if (!title) return
-    setColumns((current) => [...current, { id: createColumnId(), title, tasks: [] }])
+
+    const newId = createColumnId()
+
+    setColumns((current) => [...current, { id: newId, title, tasks: [] }])
     setNewColumnTitle("")
     setAddingColumn(false)
+
+    try {
+      await fetch("/api/kanban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "createColumn", columnId: newId, title }),
+      })
+    } catch { /* non-critical */ }
   }
 
-  function deleteColumn(columnId: string) {
+  async function deleteColumn(columnId: string) {
+    if (!window.confirm("Delete this column? Tasks will move to Backlog.")) return
     setColumns((current) => current.filter((col) => col.id !== columnId))
+
+    try {
+      await fetch("/api/kanban", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "deleteColumn", columnId }),
+      })
+    } catch { /* non-critical */ }
   }
 
   function openTaskEditor(columnId: string, task: KanbanTask) {
     setEditingTask({ columnId, taskId: task.id })
     setEditTitle(task.title)
     setEditDescription(task.description)
-    setEditAssignee(task.assignee)
     setEditDueDate(task.dueDate)
+    setEditAssigneeId(task.assigneeId ?? "")
   }
 
   function saveTaskEdit() {
@@ -1692,38 +934,98 @@ export function KanbanBoard() {
     const title = editTitle.trim()
     if (!title) return
 
-    setColumns((current) =>
-      current.map((col) => {
-        if (col.id !== editingTask.columnId) return col
-        return {
-          ...col,
-          tasks: col.tasks.map((t) =>
-            t.id === editingTask.taskId
-              ? {
-                  ...t,
-                  title,
-                  description: editDescription.trim(),
-                  assignee: editAssignee.trim() || "Unassigned",
-                  dueDate: editDueDate || t.dueDate,
-                }
-              : t
-          ),
+    const assigneeUser = users.find((u) => u.id === editAssigneeId)
+    const assigneeName = assigneeUser?.name ?? ""
+    const assigneeInitials = makeInitials(assigneeName)
+
+    ;(async () => {
+      try {
+        const payload: Record<string, unknown> = {
+          id: editingTask.taskId,
+          title,
+          description: editDescription.trim(),
+          dueDate: editDueDate || undefined,
+          updateAssignee: true,
+          assigneeId: assigneeUser ? assigneeUser.id : null,
+          assigneeName: assigneeName || "",
+          assigneeInitials: assigneeInitials,
         }
+
+        const res = await fetch("/api/kanban", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        })
+
+        if (res.ok) {
+          const cols = await fetchColumns()
+          if (cols) {
+            setColumns(cols)
+            setEditingTask(null)
+            return
+          }
+        }
+      } catch { /* fallback to local */ }
+
+      setColumns((current) => {
+        const next = current.map((col) => {
+          if (col.id !== editingTask.columnId) return col
+          return {
+            ...col,
+            tasks: col.tasks.map((t) =>
+              t.id === editingTask.taskId
+                ? {
+                    ...t,
+                    title,
+                    description: editDescription.trim(),
+                    assignee: assigneeName,
+                    assigneeId: editAssigneeId,
+                    assigneeInitials,
+                    dueDate: editDueDate || t.dueDate,
+                  }
+                : t
+            ),
+          }
+        })
+        setEditingTask(null)
+        return next
       })
-    )
-    setEditingTask(null)
+    })()
   }
 
   function deleteTask(columnId: string, taskId: string) {
     if (!window.confirm("Delete this task?")) return
-    setColumns((current) =>
-      current.map((col) =>
-        col.id === columnId ? { ...col, tasks: col.tasks.filter((t) => t.id !== taskId) } : col
+    ;(async () => {
+      try {
+        const res = await fetch("/api/kanban", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ id: taskId }),
+        })
+
+        if (res.ok) {
+          const cols = await fetchColumns()
+          if (cols) { setColumns(cols); return }
+        }
+      } catch { /* fallback */ }
+
+      setColumns((current) =>
+        current.map((col) =>
+          col.id === columnId
+            ? { ...col, tasks: col.tasks.filter((t) => t.id !== taskId) }
+            : col
+        )
       )
-    )
+    })()
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
+
+  if (!mounted) {
+    return <div className="w-full overflow-x-auto pb-4" />
+  }
 
   return (
     <div className="w-full overflow-x-auto pb-4">
@@ -1735,7 +1037,10 @@ export function KanbanBoard() {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={columns.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
+          <SortableContext
+            items={columns.map((c) => c.id)}
+            strategy={horizontalListSortingStrategy}
+          >
             <div className="flex min-h-[36rem] w-max items-start gap-4 pb-2">
               {columns.map((column) => (
                 <KanbanColumnCard
@@ -1745,6 +1050,8 @@ export function KanbanBoard() {
                   onDeleteColumn={deleteColumn}
                   onEditTask={openTaskEditor}
                   onDeleteTask={deleteTask}
+                  users={users}
+                  session={session}
                 />
               ))}
 
@@ -1796,8 +1103,13 @@ export function KanbanBoard() {
             </div>
           </SortableContext>
 
-          {/* ── Drag overlay — renders a floating clone while dragging ── */}
-          <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.18,0.67,0.6,1.22)" }}>
+          {/* Drag overlay — floating clone while dragging */}
+          <DragOverlay
+            dropAnimation={{
+              duration: 180,
+              easing: "cubic-bezier(0.18,0.67,0.6,1.22)",
+            }}
+          >
             {activeTask ? (
               <KanbanTaskCard
                 task={activeTask.task}
@@ -1814,18 +1126,25 @@ export function KanbanBoard() {
                 onEditTask={() => {}}
                 onDeleteTask={() => {}}
                 isOverlay
+                users={users}
+                session={session}
               />
             ) : null}
           </DragOverlay>
         </DndContext>
       </div>
 
-      {/* ── Edit task dialog ── */}
-      <Dialog open={Boolean(editingTask)} onOpenChange={(open) => !open && setEditingTask(null)}>
+      {/* Edit task dialog */}
+      <Dialog
+        open={Boolean(editingTask)}
+        onOpenChange={(open) => !open && setEditingTask(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit task</DialogTitle>
-            <DialogDescription>Update the task details and save the changes.</DialogDescription>
+            <DialogDescription>
+              Update the task details and save the changes.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
             <Input
@@ -1837,28 +1156,21 @@ export function KanbanBoard() {
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               placeholder="Task description"
+              rows={3}
             />
             <div className="grid grid-cols-2 gap-2">
-              {users.length > 0 ? (
-                <select
-                  value={editAssignee}
-                  onChange={(e) => setEditAssignee(e.target.value)}
-                  className="w-full rounded-md border bg-background px-2 py-1"
-                >
-                  <option value="">Unassigned</option>
-                  {getAssignableUsersForEditor().map((u) => (
-                    <option key={u.id} value={u.name}>
-                      {u.name} {u.role ? `(${u.role})` : ""}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <Input
-                  value={editAssignee}
-                  onChange={(e) => setEditAssignee(e.target.value)}
-                  placeholder="Assignee"
-                />
-              )}
+              <select
+                value={editAssigneeId}
+                onChange={(e) => setEditAssigneeId(e.target.value)}
+                className="w-full rounded-md border bg-background px-2 py-1 text-sm"
+              >
+                <option value="">Unassigned</option>
+                {getAssignableUsersForEditor().map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} {u.role ? `(${u.role})` : ""}
+                  </option>
+                ))}
+              </select>
               <Input
                 type="date"
                 value={editDueDate}
@@ -1867,7 +1179,11 @@ export function KanbanBoard() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setEditingTask(null)}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setEditingTask(null)}
+            >
               Cancel
             </Button>
             <Button type="button" onClick={saveTaskEdit}>

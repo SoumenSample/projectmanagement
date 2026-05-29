@@ -53,8 +53,15 @@ export function AppSidebar({
   const messagesPath = isVendor ? "/dashboard/vendor/messages" : "/dashboard/messages"
   const schedulePath = isVendor ? "/dashboard/vendor/schedule" : "/schedule"
   const ticketsPath = isVendor ? "/dashboard/vendor/tickets" : "/dashboard/tickets"
-  const kanbanPath = isVendor ? "/dashboard/vendor/kanban" : "/dashboard/kanban"
+  const kanbanPath =
+    normalizedRole === "admin"
+      ? "/dashboard/kanban"
+      : isVendor
+      ? "/dashboard/vendor/kanban"
+      : scopedPath("kanban")
   const quotationPath = normalizedRole === "client" ? scopedPath("quotations") : scopedPath("quotation")
+  const documentsPath = scopedPath("documents")
+  const sheetsPath = scopedPath("sheets")
 
   const dashboardItem = {
     title: "Dashboard",
@@ -62,102 +69,118 @@ export function AppSidebar({
     icon: <LayoutDashboardIcon />,
   }
 
-  const sidebarSections = (() => {
-    if (normalizedRole === "admin") {
-      return [
-        {
-          label: "Project",
-          items: [
-            { title: "Projects", url: projectsPath, icon: <FolderIcon /> },
-            { title: "Kanban", url: kanbanPath, icon: <KanbanSquare /> },
-            { title: "Tickets", url: ticketsPath, icon: <TicketIcon /> },
-          ],
-        },
-        {
-          label: "Connect",
-          items: [
-            { title: "Messages", url: messagesPath, icon: <MessageSquareIcon /> },
-            { title: "Schedule", url: schedulePath, icon: <CalendarIcon /> },
-          ],
-        },
-        {
-          label: "Users",
-          items: [
-            { title: "Manage Users", url: scopedPath("users"), icon: <UserCogIcon /> },
-            { title: "Leads", url: scopedPath("leads"), icon: <FileUser /> },
-            { title: "Clients", url: scopedPath("clients"), icon: <UsersIcon /> },
-            { title: "Attendance", url: attendancePath, icon: <CalendarClock /> },
-          ],
-        },
-        {
-          label: "Business",
-          items: [
-            { title: "Billing", url: scopedPath("billing"), icon: <ReceiptIcon /> },
-            { title: "Payment", url: scopedPath("payment"), icon: <WalletCards /> },
-            { title: "Quotation", url: quotationPath, icon: <BookA /> },
-            { title: "Contract", url: scopedPath("contracts"), icon: <Handshake /> },
-          ],
-        },
-        {
-          label: "Documents",
-          items: [
-            { title: "Notes", url: scopedPath("documents"), icon: <FileTextIcon /> },
-            { title: "Grids", url: scopedPath("sheets"), icon: <Table2 /> },
-          ],
-        },
-      ]
-    }
+  let sidebarSections = []
 
-    if (isVendor) {
-      return [
-        {
-          label: "Project",
-          items: [
-            { title: "Projects", url: projectsPath, icon: <FolderIcon /> },
-            { title: "Kanban", url: kanbanPath, icon: <KanbanSquare /> },
-            { title: "Tickets", url: ticketsPath, icon: <TicketIcon /> },
-          ],
-        },
-        {
-          label: "Connect",
-          items: [
-            { title: "Messages", url: messagesPath, icon: <MessageSquareIcon /> },
-            { title: "Schedule", url: schedulePath, icon: <CalendarIcon /> },
-          ],
-        },
-        {
-          label: "Business",
-          items: [
-            { title: "Contracts", url: scopedPath("contracts"), icon: <Handshake /> },
-            { title: "Payment", url: scopedPath("payment"), icon: <WalletCards /> },
-          ],
-        },
-      ]
-    }
-
-    if (normalizedRole === "employee") {
-      return [
-        {
-          label: "Project",
-          items: [{ title: "Projects", url: projectsPath, icon: <FolderIcon /> }],
-        },
-        {
-          label: "Users",
-          items: attendancePath
-            ? [{ title: "Attendance", url: attendancePath, icon: <CalendarClock /> }]
-            : [],
-        },
-        {
-          label: "Business",
-          items: [{ title: "Payment", url: scopedPath("payment"), icon: <WalletCards /> }],
-        },
-      ]
-    }
-
-    return [
+  if (normalizedRole === "admin") {
+    sidebarSections = [
       {
         label: "Project",
-        items: [{ title: "Projects", url: projectsPath, icon: <FolderIcon /> }],
+        items: [
+          { title: "Projects", url: projectsPath, icon: <FolderIcon /> },
+          { title: "Kanban", url: kanbanPath, icon: <KanbanSquare /> },
+          { title: "Tickets", url: ticketsPath, icon: <TicketIcon /> },
+        ],
+      },
+      {
+        label: "Connect",
+        items: [
+          { title: "Messages", url: messagesPath, icon: <MessageSquareIcon /> },
+          { title: "Schedule", url: schedulePath, icon: <CalendarIcon /> },
+        ],
+      },
+      {
+        label: "Users",
+        items: [
+          { title: "Manage Users", url: scopedPath("users"), icon: <UserCogIcon /> },
+          { title: "Leads", url: scopedPath("leads"), icon: <FileUser /> },
+          { title: "Clients", url: scopedPath("clients"), icon: <UsersIcon /> },
+          { title: "Attendance", url: attendancePath, icon: <CalendarClock /> },
+        ],
+      },
+      {
+        label: "Business",
+        items: [
+          { title: "Billing", url: scopedPath("billing"), icon: <ReceiptIcon /> },
+          { title: "Payment", url: scopedPath("payment"), icon: <WalletCards /> },
+          { title: "Quotation", url: quotationPath, icon: <BookA /> },
+          { title: "Contract", url: scopedPath("contracts"), icon: <Handshake /> },
+        ],
+      },
+      {
+        label: "Documents",
+        items: [
+          { title: "Notes", url: scopedPath("documents"), icon: <FileTextIcon /> },
+          { title: "Grids", url: scopedPath("sheets"), icon: <Table2 /> },
+        ],
+      },
+    ]
+  } else if (isVendor) {
+    sidebarSections = [
+      {
+        label: "Project",
+        items: [
+          { title: "Projects", url: projectsPath, icon: <FolderIcon /> },
+          { title: "Kanban", url: kanbanPath, icon: <KanbanSquare /> },
+          { title: "Tickets", url: ticketsPath, icon: <TicketIcon /> },
+        ],
+      },
+      {
+        label: "Connect",
+        items: [
+          { title: "Messages", url: messagesPath, icon: <MessageSquareIcon /> },
+          { title: "Schedule", url: schedulePath, icon: <CalendarIcon /> },
+        ],
+      },
+      {
+        label: "Business",
+        items: [
+          { title: "Contracts", url: scopedPath("contracts"), icon: <Handshake /> },
+          { title: "Payment", url: scopedPath("payment"), icon: <WalletCards /> },
+        ],
+      },
+      {
+        label: "Documents",
+        items: [
+          { title: "Notes", url: documentsPath, icon: <FileTextIcon /> },
+          { title: "Grids", url: sheetsPath, icon: <Table2 /> },
+        ],
+      },
+    ]
+  } else if (normalizedRole === "employee") {
+    sidebarSections = [
+      {
+        label: "Project",
+        items: [
+          { title: "Projects", url: projectsPath, icon: <FolderIcon /> },
+          { title: "Kanban", url: kanbanPath, icon: <KanbanSquare /> },
+        ],
+      },
+      {
+        label: "Users",
+        items: attendancePath
+          ? [{ title: "Attendance", url: attendancePath, icon: <CalendarClock /> }]
+          : [],
+      },
+      {
+        label: "Business",
+        items: [{ title: "Payment", url: scopedPath("payment"), icon: <WalletCards /> }],
+      },
+      {
+        label: "Documents",
+        items: [
+          { title: "Notes", url: documentsPath, icon: <FileTextIcon /> },
+          { title: "Grids", url: sheetsPath, icon: <Table2 /> },
+        ],
+      },
+    ]
+  } else {
+    sidebarSections = [
+      {
+        label: "Project",
+        items: [
+          { title: "Projects", url: projectsPath, icon: <FolderIcon /> },
+          { title: "Kanban", url: kanbanPath, icon: <KanbanSquare /> },
+        ],
       },
       {
         label: "Business",
@@ -167,8 +190,15 @@ export function AppSidebar({
           { title: "Payments", url: scopedPath("payment"), icon: <WalletCards /> },
         ],
       },
+      {
+        label: "Documents",
+        items: [
+          { title: "Notes", url: documentsPath, icon: <FileTextIcon /> },
+          { title: "Grids", url: sheetsPath, icon: <Table2 /> },
+        ],
+      },
     ]
-  })()
+  }
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="py-3 group-data-[collapsible=icon]:px-1">

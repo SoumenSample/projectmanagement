@@ -4,7 +4,12 @@ import ThemeToggle from "@/components/ThemeToggle"
 import NotificationCenter from "@/components/NotificationCenter"
 import { cn } from "@/lib/utils"
 
-export function SiteHeader({ title = "Dashboard", subtitle = "", className, contentClassName }) {
+export function SiteHeader({
+  title = "Dashboard",
+  subtitle = "",
+  className = "",
+  contentClassName = "",
+}) {
   const displayTitle = subtitle ? `${title} (${subtitle})` : title
 
   return (

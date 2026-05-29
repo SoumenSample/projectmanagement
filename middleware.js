@@ -31,7 +31,9 @@ export async function middleware(request) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (!pathname.startsWith("/api") && !authRoutes.has(pathname) && !isProjectRoute(pathname) && pathname !== "/") {
+  const isPublicShareRoute = pathname.startsWith("/share/");
+
+  if (!pathname.startsWith("/api") && !authRoutes.has(pathname) && !isPublicShareRoute && !isProjectRoute(pathname) && pathname !== "/") {
     if (!token) {
       return NextResponse.redirect(new URL("/login", request.url));
     }

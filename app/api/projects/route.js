@@ -60,7 +60,8 @@ async function populateProject(projectId) {
     .populate("assignedVendor", "name email role")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
-    .populate("updatedBy", "name email role");
+    .populate("updatedBy", "name email role")
+    .populate({ path: "tasks.assignee", select: "name email role" });
 }
 
 async function recordProjectActivity(projectId, actorId, type, summary, details = "", metadata = {}) {

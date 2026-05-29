@@ -20,6 +20,7 @@ const createTaskSchema = z.object({
   title: z.string().min(1).max(160),
   description: z.string().max(1000).optional().default(""),
   subtasks: z.array(z.string().min(1).max(120)).optional().default([]),
+  assigneeId: z.string().optional().nullable(),
 });
 
 const toggleTaskSchema = z.object({
@@ -33,7 +34,8 @@ async function populateProject(projectId) {
     .populate("client", "name email role")
     .populate("assignedEmployees", "name email role")
     .populate("createdBy", "name email role")
-    .populate("updatedBy", "name email role");
+    .populate("updatedBy", "name email role")
+    .populate({ path: "tasks.assignee", select: "name email role" });
 }
 
 async function recordProjectActivity(projectId, actorId, type, summary, details = "", metadata = {}) {
@@ -96,7 +98,7 @@ export async function POST(request, { params }) {
   const session = await getServerSession(authOptions);
   const { id } = await params;
 
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || !["admin", "employee"].includes(session.user.role)) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -123,6 +125,7 @@ export async function POST(request, { params }) {
       title: subtaskTitle.trim(),
       isDone: false,
     })),
+    assignee: parsed.data.assigneeId ? parsed.data.assigneeId : null,
   };
 
   project.tasks.push(task);

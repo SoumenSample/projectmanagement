@@ -2,35 +2,15 @@
 
 import { usePathname } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AppSidebar } from "@/components/app-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 
 function DashboardLoadingShell() {
   return (
     <div className="min-h-svh bg-background">
       <div className="flex min-h-svh w-full">
-        <aside className="hidden w-64 shrink-0 border-r border-border/60 bg-card/40 px-3 py-4 lg:flex lg:flex-col">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-              <Skeleton className="h-12 w-12 rounded-xl" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-4 w-28 rounded-full" />
-                <Skeleton className="h-3 w-20 rounded-full" />
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-2">
-              <Skeleton className="h-9 w-full rounded-md" />
-              <Skeleton className="h-9 w-11/12 rounded-md" />
-              <Skeleton className="h-9 w-10/12 rounded-md" />
-              <Skeleton className="h-9 w-11/12 rounded-md" />
-              <Skeleton className="h-9 w-9/12 rounded-md" />
-              <Skeleton className="h-9 w-10/12 rounded-md" />
-            </div>
-          </div>
-
-          <div className="mt-auto space-y-3 pt-6">
-            <Skeleton className="h-16 rounded-2xl" />
-            <Skeleton className="h-10 rounded-xl" />
-          </div>
+        <aside className="hidden w-64 shrink-0 lg:flex lg:flex-col" aria-hidden>
+          {/* Keep the existing sidebar visible during client navigation; do not render a demo AppSidebar here. */}
         </aside>
 
         <main className="flex min-w-0 flex-1 flex-col bg-background">

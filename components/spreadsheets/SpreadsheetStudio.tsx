@@ -336,10 +336,27 @@ function FindReplaceModal({ cells, onReplace, onClose }: {
 }
 
 // ─── Share Modal ───────────────────────────────────────────────────────────────
-function ShareModal({ shareUrl, onClose, isShared, setIsShared }: {
-  shareUrl: string; onClose: () => void; isShared: boolean; setIsShared: (v: boolean) => void
+function ShareModal({ shareUrl, onClose, isShared, setIsShared, assignedTo, setAssignedTo, onAssignUpdated }: {
+  shareUrl: string; onClose: () => void; isShared: boolean; setIsShared: (v: boolean) => void; assignedTo: string[]; setAssignedTo: (v: string[]) => void; onAssignUpdated?: (newAssigned: string[]) => Promise<void> | void
 }) {
   const [copied, setCopied] = useState(false)
+  const [users, setUsers] = useState([])
+  const [selectedAssignee, setSelectedAssignee] = useState("")
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/users/simple')
+        const p = await res.json()
+        if (!res.ok) throw new Error(p?.error || 'Failed to load users')
+        if (mounted) setUsers(p.users || [])
+      } catch {
+        if (mounted) setUsers([])
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
+
   const copy = async () => {
     if (!shareUrl) return
     await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000)
@@ -374,6 +391,41 @@ function ShareModal({ shareUrl, onClose, isShared, setIsShared }: {
               </button>
             </div>
           </div>
+          <div>
+            <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-wide text-zinc-600">Assign To</label>
+            <div className="flex gap-2">
+              <select value={selectedAssignee} onChange={e => setSelectedAssignee(e.target.value)} className="flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-[13px] text-zinc-700">
+                <option value="">Choose user...</option>
+                {users.map(u => (
+                  <option key={u._id} value={u._id}>{u.name} — {u.role}</option>
+                ))}
+              </select>
+              <button type="button" onClick={async () => {
+                if (!selectedAssignee) return
+                if (assignedTo.includes(selectedAssignee)) { setSelectedAssignee(""); return }
+                const newAssigned = [...assignedTo, selectedAssignee]
+                setAssignedTo(newAssigned)
+                setSelectedAssignee("")
+                if (typeof onAssignUpdated === "function") await onAssignUpdated(newAssigned)
+              }} className="rounded bg-[#217346] px-3 py-2 text-[13px] text-white hover:bg-[#1a5e38]">Add</button>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {assignedTo.map(aid => {
+                const u = users.find(x => x._id === aid)
+                return (
+                  <div key={aid} className="flex items-center gap-2 rounded bg-zinc-100 px-2 py-1 text-[13px] text-zinc-800">
+                    <span>{u ? `${u.name} — ${u.role}` : aid}</span>
+                    <button type="button" onClick={async () => {
+                      const newAssigned = assignedTo.filter(x => x !== aid)
+                      setAssignedTo(newAssigned)
+                      if (typeof onAssignUpdated === "function") await onAssignUpdated(newAssigned)
+                    }} className="rounded px-1 text-sm text-red-600">×</button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
           <div className="flex items-center gap-3 rounded-lg border border-zinc-200 p-3">
             <input id="share-toggle" type="checkbox" checked={isShared} onChange={e => setIsShared(e.target.checked)} className="h-4 w-4 cursor-pointer accent-zinc-700" />
             <label htmlFor="share-toggle" className="cursor-pointer text-[13px] text-zinc-700">Allow public access via link</label>
@@ -461,7 +513,8 @@ const FORMULA_SUGGESTIONS = [
 ]
 
 // ─── Main Component ────────────────────────────────────────────────────────────
-export default function SpreadsheetStudio() {
+export default function SpreadsheetStudio({ initialSheet = null, readOnly = false }) {
+  const isReadOnly = !!readOnly
   const [sheets, setSheets] = useState<any[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [title, setTitle] = useState("Untitled Grids")
@@ -477,6 +530,7 @@ export default function SpreadsheetStudio() {
   const [showSheetsModal, setShowSheetsModal] = useState(false)
   const [showFindReplace, setShowFindReplace] = useState(false)
   const [isShared, setIsShared] = useState(true)
+  const [assignedTo, setAssignedTo] = useState([])
   const [selection, setSelection] = useState({ row: 0, col: 0 })
   const [selRange, setSelRange] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null)
   const [editingTitle, setEditingTitle] = useState(false)
@@ -502,6 +556,7 @@ export default function SpreadsheetStudio() {
   const [formulaBarDraft, setFormulaBarDraft] = useState("")
 
   const selectedIdRef = useRef<string | null>(null)
+  const originalAssignedRef = useRef<string[]>([])
   const titleInputRef = useRef<HTMLInputElement>(null)
   const dragStart = useRef<{ row: number; col: number } | null>(null)
 
@@ -610,6 +665,7 @@ export default function SpreadsheetStudio() {
     Array.from({ length: len }, () => ({ ...EMPTY_CELL_FORMAT })), [])
 
   const addRow = useCallback(() => {
+    if (isReadOnly) return
     pushHistory(cells)
     const newRowLen = cells[0]?.length || DEFAULT_COLS
     setCells((c) => [...c, Array.from({ length: newRowLen }, () => "")])
@@ -617,12 +673,14 @@ export default function SpreadsheetStudio() {
   }, [cells, pushHistory, emptyFmtRow])
 
   const addColumn = useCallback(() => {
+    if (isReadOnly) return
     pushHistory(cells)
     setCells((c) => c.map((row) => [...row, ""]))
     setFmt((f) => f.map((row) => [...row, { ...EMPTY_CELL_FORMAT }]))
   }, [cells, pushHistory])
 
   const removeRow = useCallback(() => {
+    if (isReadOnly) return
     if (cells.length <= 1) return
     pushHistory(cells)
     setCells((c) => c.slice(0, -1))
@@ -630,6 +688,7 @@ export default function SpreadsheetStudio() {
   }, [cells, pushHistory])
 
   const removeColumn = useCallback(() => {
+    if (isReadOnly) return
     if ((cells[0]?.length || 0) <= 1) return
     pushHistory(cells)
     setCells((c) => c.map((row) => row.slice(0, -1)))
@@ -637,6 +696,7 @@ export default function SpreadsheetStudio() {
   }, [cells, pushHistory])
 
   const insertRowAbove = useCallback(() => {
+    if (isReadOnly) return
     pushHistory(cells)
     const r = selection.row
     const newRowLen = cells[0]?.length || DEFAULT_COLS
@@ -653,6 +713,7 @@ export default function SpreadsheetStudio() {
   }, [cells, selection.row, pushHistory, emptyFmtRow])
 
   const insertRowBelow = useCallback(() => {
+    if (isReadOnly) return
     pushHistory(cells)
     const r = selection.row + 1
     const newRowLen = cells[0]?.length || DEFAULT_COLS
@@ -669,6 +730,7 @@ export default function SpreadsheetStudio() {
   }, [cells, selection.row, pushHistory, emptyFmtRow])
 
   const insertColLeft = useCallback(() => {
+    if (isReadOnly) return
     pushHistory(cells)
     const c = selection.col
     setCells((current) => current.map((row) => { const n = [...row]; n.splice(c, 0, ""); return n }))
@@ -676,6 +738,7 @@ export default function SpreadsheetStudio() {
   }, [cells, selection.col, pushHistory])
 
   const insertColRight = useCallback(() => {
+    if (isReadOnly) return
     pushHistory(cells)
     const c = selection.col + 1
     setCells((current) => current.map((row) => { const n = [...row]; n.splice(c, 0, ""); return n }))
@@ -683,6 +746,7 @@ export default function SpreadsheetStudio() {
   }, [cells, selection.col, pushHistory])
 
   const deleteRow = useCallback(() => {
+    if (isReadOnly) return
     if (cells.length <= 1) return
     pushHistory(cells)
     const r = selection.row
@@ -692,6 +756,7 @@ export default function SpreadsheetStudio() {
   }, [cells, selection.row, pushHistory])
 
   const deleteCol = useCallback(() => {
+    if (isReadOnly) return
     if ((cells[0]?.length || 0) <= 1) return
     pushHistory(cells)
     const col = selection.col
@@ -701,6 +766,7 @@ export default function SpreadsheetStudio() {
   }, [cells, selection.col, pushHistory])
 
   const clearCell = useCallback(() => {
+    if (isReadOnly) return
     pushHistory(cells)
     if (selRange) {
       const r1 = Math.min(selRange.r1, selRange.r2), r2 = Math.max(selRange.r1, selRange.r2)
@@ -713,6 +779,7 @@ export default function SpreadsheetStudio() {
 
   // ── Sort ───────────────────────────────────────────────────────────────────
   const sortByCol = useCallback((col: number, dir: string) => {
+    if (isReadOnly) return
     pushHistory(cells)
     setCells((c) => [...c].sort((a, b) => {
       const av = parseFloat(a[col]) || a[col] || "", bv = parseFloat(b[col]) || b[col] || ""
@@ -724,6 +791,7 @@ export default function SpreadsheetStudio() {
 
   // ── Find & Replace ─────────────────────────────────────────────────────────
   const doFindReplace = useCallback((find: string, replace: string) => {
+    if (isReadOnly) return
     pushHistory(cells)
     setCells((c) => c.map((row) => row.map((cell) => cell.includes(find) ? cell.replaceAll(find, replace) : cell)))
   }, [cells, pushHistory])
@@ -755,6 +823,16 @@ export default function SpreadsheetStudio() {
     const c = normalizeSpreadsheetGrid(sheet.cells, DEFAULT_ROWS, DEFAULT_COLS)
     setCells(c); setFmt(normalizeFmt(sheet.fmt, c.length, c[0]?.length || DEFAULT_COLS))
     setIsShared(sheet.isShared !== false); setMessage("")
+    if (Array.isArray(sheet.assignedTo)) {
+      setAssignedTo(sheet.assignedTo)
+      originalAssignedRef.current = sheet.assignedTo.map(String)
+    } else if (sheet.assignedTo) {
+      setAssignedTo([sheet.assignedTo])
+      originalAssignedRef.current = [String(sheet.assignedTo)]
+    } else {
+      setAssignedTo([])
+      originalAssignedRef.current = []
+    }
     setSelection({ row: 0, col: 0 }); setSelRange(null)
     setHistory([]); setRedoStack([])
     editingCellRef.current = null; setEditDraft(""); editDraftRef.current = ""
@@ -766,6 +844,8 @@ export default function SpreadsheetStudio() {
     const c = createEmptySpreadsheetGrid(DEFAULT_ROWS, DEFAULT_COLS)
     setCells(c); setFmt(makeEmptyFormat(DEFAULT_ROWS, DEFAULT_COLS))
     setIsShared(true); setMessage("")
+    setAssignedTo([])
+    originalAssignedRef.current = []
     setSelection({ row: 0, col: 0 }); setSelRange(null)
     setHistory([]); setRedoStack([])
     editingCellRef.current = null; setEditDraft(""); editDraftRef.current = ""
@@ -785,10 +865,20 @@ export default function SpreadsheetStudio() {
     } finally { setLoading(false) }
   }, [applySheetToEditor, resetDraft])
 
-  useEffect(() => { loadSheets(); setOrigin(window.location.origin) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (initialSheet) {
+      setSheets([initialSheet])
+      applySheetToEditor(initialSheet)
+      setLoading(false)
+    } else {
+      loadSheets()
+    }
+    setOrigin(window.location.origin)
+  }, [])
   useEffect(() => { if (editingTitle && titleInputRef.current) titleInputRef.current.focus() }, [editingTitle])
 
-  const saveSheet = useCallback(async () => {
+  const saveSheet = useCallback(async (assignedOverride = undefined) => {
+    if (isReadOnly) return
     setSaving(true); setMessage("")
     try {
       // Read the latest state via functional updater to avoid stale closure
@@ -811,13 +901,44 @@ export default function SpreadsheetStudio() {
       currentSummary = summary
       currentIsShared = isShared
 
-      const payload = {
+      // Sanitize assigned list to avoid passing DOM/React objects in payload
+      const rawAssigned = assignedOverride ?? assignedTo
+      const safeAssigned = Array.isArray(rawAssigned)
+        ? rawAssigned
+            .map(a => {
+              if (typeof a === 'string') return a
+              if (a && typeof a === 'object') {
+                if (a._id) return a._id
+                if (a.id) return a.id
+                if (a.email) return a.email
+              }
+              return null
+            })
+            .filter(x => x != null)
+        : []
+
+      // Only include assignedTo if caller provided it or it changed from original
+      const includeAssigned = assignedOverride !== undefined || (
+        selectedId ?
+          JSON.stringify((originalAssignedRef.current || []).sort()) !== JSON.stringify((safeAssigned || []).map(String).sort())
+          : true
+      )
+
+      const payload: {
+        title: string
+        summary: string
+        cells: string[][]
+        fmt: CellFmt[][]
+        isShared: boolean
+        assignedTo?: string[]
+      } = {
         title: currentTitle,
         summary: currentSummary,
         cells: currentCells,
         fmt: currentFmt,
         isShared: currentIsShared,
       }
+      if (includeAssigned) payload.assignedTo = safeAssigned
       const res = await fetch(currentSelectedId ? `/api/sheets/${currentSelectedId}` : "/api/sheets", {
         method: currentSelectedId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -833,6 +954,9 @@ export default function SpreadsheetStudio() {
       })
       setSelectedId(saved._id); selectedIdRef.current = saved._id
       setTitle(saved.title || "Untitled Grid"); setSummary(saved.summary || ""); setIsShared(saved.isShared !== false)
+      if (Array.isArray(saved.assignedTo)) { setAssignedTo(saved.assignedTo); originalAssignedRef.current = saved.assignedTo.map(String) }
+      else if (saved.assignedTo) { setAssignedTo([saved.assignedTo]); originalAssignedRef.current = [String(saved.assignedTo)] }
+      else { setAssignedTo([]); originalAssignedRef.current = [] }
       setMessage("Saved"); setTimeout(() => setMessage(""), 2000)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to save sheet")
@@ -843,6 +967,7 @@ export default function SpreadsheetStudio() {
   useEffect(() => { saveSheetRef.current = saveSheet }, [saveSheet])
 
   const deleteSheet = useCallback(async () => {
+    if (isReadOnly) return
     if (!selectedId || !window.confirm("Delete this sheet permanently?")) return
     setDeleting(true); setMessage("")
     try {
@@ -856,6 +981,7 @@ export default function SpreadsheetStudio() {
   }, [selectedId, resetDraft, loadSheets])
 
   const createNewSheet = useCallback(() => {
+    if (isReadOnly) return
     resetDraft(); setMessage("New sheet ready."); setTimeout(() => setMessage(""), 2000)
   }, [resetDraft])
 
@@ -1067,21 +1193,25 @@ export default function SpreadsheetStudio() {
         <button onClick={() => setShowSheetsModal(true)} className="flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium text-[#5f6368] transition hover:bg-[#f1f3f4]">
           <Folder className="h-4 w-4" /><span className="hidden sm:inline">My Sheets</span><ChevronDown className="h-3 w-3" />
         </button>
-        <button onClick={() => setShowShareModal(true)} className="flex items-center gap-2 rounded-full bg-[#454749] px-4 py-1.5 text-sm font-medium text-white transition hover:bg-[#3b3b3b]">
-          <Share2 className="h-4 w-4" />Share
-        </button>
+        {!isReadOnly && (
+          <button onClick={() => setShowShareModal(true)} className="flex items-center gap-2 rounded-full bg-[#454749] px-4 py-1.5 text-sm font-medium text-white transition hover:bg-[#3b3b3b]">
+            <Share2 className="h-4 w-4" />Share
+          </button>
+        )}
       </div>
 
       {/* ── Formatting toolbar ── */}
       <div className="flex shrink-0 items-center gap-1 border-b border-t border-[#e0e0e0] bg-[#f8f9fa] px-2 py-1 flex-wrap">
-        <button onClick={undo} disabled={!history.length} title="Undo (Ctrl+Z)" className="rounded p-1.5 text-[#444746] hover:bg-[#e8eaed] disabled:opacity-30"><Undo className="h-3.5 w-3.5" /></button>
-        <button onClick={redo} disabled={!redoStack.length} title="Redo (Ctrl+Y)" className="rounded p-1.5 text-[#444746] hover:bg-[#e8eaed] disabled:opacity-30"><Redo className="h-3.5 w-3.5" /></button>
+        <button onClick={undo} disabled={isReadOnly || !history.length} title="Undo (Ctrl+Z)" className="rounded p-1.5 text-[#444746] hover:bg-[#e8eaed] disabled:opacity-30"><Undo className="h-3.5 w-3.5" /></button>
+        <button onClick={redo} disabled={isReadOnly || !redoStack.length} title="Redo (Ctrl+Y)" className="rounded p-1.5 text-[#444746] hover:bg-[#e8eaed] disabled:opacity-30"><Redo className="h-3.5 w-3.5" /></button>
 
         <div className="h-4 w-px bg-[#dadce0] mx-0.5" />
 
-        <button onClick={saveSheet} disabled={saving} title="Save (Ctrl+S)" className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[#3c4043] hover:bg-[#e8eaed] disabled:opacity-40">
-          {saving ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Save
-        </button>
+        {!isReadOnly && (
+          <button onClick={() => saveSheet()} disabled={saving} title="Save (Ctrl+S)" className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[#3c4043] hover:bg-[#e8eaed] disabled:opacity-40">
+            {saving ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Save
+          </button>
+        )}
 
         <div className="h-4 w-px bg-[#dadce0] mx-0.5" />
 
@@ -1142,9 +1272,11 @@ export default function SpreadsheetStudio() {
 
         <div className="flex-1" />
 
-        <button onClick={deleteSheet} disabled={!selectedId || deleting} className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[#d93025] hover:bg-[#fce8e6] disabled:opacity-40">
-          {deleting ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}Delete
-        </button>
+        {!isReadOnly && (
+          <button onClick={deleteSheet} disabled={!selectedId || deleting} className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[#d93025] hover:bg-[#fce8e6] disabled:opacity-40">
+            {deleting ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}Delete
+          </button>
+        )}
       </div>
 
       {/* ── Formula bar ── */}
@@ -1268,19 +1400,21 @@ export default function SpreadsheetStudio() {
                       key={`${rowIndex}-${colIndex}`}
                       className={`relative ${borderStyle} ${isSelected ? "z-10 ring-2 ring-inset ring-[#1a73e8]" : ""} ${inRange && !isSelected ? "bg-[#e8f0fe]/60" : ""} ${isFilterHeader ? "bg-[#e8f5e9]" : ""}`}
                       style={{ minHeight: 22, background: isSelected ? undefined : inRange ? undefined : isFilterHeader ? "#e8f5e9" : (cellFmt.bg || undefined) }}
-                      onMouseDown={(e) => onCellMouseDown(rowIndex, colIndex, e)}
-                      onMouseEnter={() => onCellMouseEnter(rowIndex, colIndex)}
+                      onMouseDown={(e) => { if (!isReadOnly) onCellMouseDown(rowIndex, colIndex, e); else { setSelection({ row: rowIndex, col: colIndex }); setSelRange(null) } }}
+                      onMouseEnter={() => { if (!isReadOnly) onCellMouseEnter(rowIndex, colIndex) }}
                     >
                       <input
                         data-cell={`${rowIndex}-${colIndex}`}
                         value={inputDisplayValue}
                         onChange={(e) => {
+                          if (isReadOnly) return
                           setEditDraft(e.target.value)
                           editDraftRef.current = e.target.value
                         }}
                         onFocus={() => {
                           setSelection({ row: rowIndex, col: colIndex })
                           setSelRange(null)
+                          if (isReadOnly) return
                           editingCellRef.current = { row: rowIndex, col: colIndex }
                           const raw = cells[rowIndex]?.[colIndex] ?? ""
                           setEditDraft(raw)
@@ -1289,6 +1423,7 @@ export default function SpreadsheetStudio() {
                           setFormulaBarDraft(raw)
                         }}
                         onBlur={() => {
+                          if (isReadOnly) return
                           const ec = editingCellRef.current
                           if (ec && ec.row === rowIndex && ec.col === colIndex) {
                             updateCell(rowIndex, colIndex, editDraftRef.current)
@@ -1298,6 +1433,7 @@ export default function SpreadsheetStudio() {
                           }
                         }}
                         onKeyDown={(e) => {
+                          if (isReadOnly) { e.preventDefault(); return }
                           if (e.key === "Enter") {
                             e.preventDefault()
                             updateCell(rowIndex, colIndex, editDraftRef.current)
@@ -1374,7 +1510,9 @@ export default function SpreadsheetStudio() {
 
       {/* ── Sheet tabs ── */}
       <div className="flex shrink-0 items-center gap-0 border-t border-[#e0e0e0] bg-[#f8f9fa] px-2" style={{ minHeight: 32 }}>
-        <button onClick={createNewSheet} className="rounded p-1 text-[#5f6368] transition hover:bg-[#e8eaed]" title="New sheet"><Plus className="h-4 w-4" /></button>
+        {!isReadOnly && (
+          <button onClick={createNewSheet} className="rounded p-1 text-[#5f6368] transition hover:bg-[#e8eaed]" title="New sheet"><Plus className="h-4 w-4" /></button>
+        )}
         <div className="mx-1 h-4 w-px bg-[#dadce0]" />
         <div className="flex items-end gap-0 overflow-x-auto">
           {sheets.length === 0 ? (
@@ -1389,13 +1527,13 @@ export default function SpreadsheetStudio() {
           ))}
         </div>
         <div className="ml-auto flex items-center pr-1">
-          <input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Sheet description…"
-            className="rounded border border-transparent bg-transparent px-2 py-1 text-xs text-[#5f6368] outline-none placeholder:text-[#bdc1c6] focus:border-[#dadce0] focus:bg-white select-text" />
+          <input value={summary} onChange={(e) => { if (!isReadOnly) setSummary(e.target.value) }} placeholder="Sheet description…"
+            className="rounded border border-transparent bg-transparent px-2 py-1 text-xs text-[#5f6368] outline-none placeholder:text-[#bdc1c6] focus:border-[#dadce0] focus:bg-white select-text" readOnly={isReadOnly} />
         </div>
       </div>
 
       {/* ── Modals ── */}
-      {showShareModal && <ShareModal shareUrl={shareUrl} onClose={() => setShowShareModal(false)} isShared={isShared} setIsShared={setIsShared} />}
+      {showShareModal && <ShareModal shareUrl={shareUrl} onClose={() => setShowShareModal(false)} isShared={isShared} setIsShared={setIsShared} assignedTo={assignedTo} setAssignedTo={setAssignedTo} onAssignUpdated={(newAssigned) => saveSheet(newAssigned)} />}
       {showSheetsModal && <SheetsListModal sheets={sheets} selectedId={selectedId} loading={loading} onSelect={applySheetToEditor} onClose={() => setShowSheetsModal(false)} onRefresh={loadSheets} onNew={createNewSheet} />}
       {showFindReplace && <FindReplaceModal cells={cells} onReplace={doFindReplace} onClose={() => setShowFindReplace(false)} />}
     </div>

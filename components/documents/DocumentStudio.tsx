@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { usePersistentLoader } from "@/components/ui/persistent-skeleton"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import {
@@ -92,13 +93,11 @@ function applyFontSizeToSelection(editor, ptSize) {
   }
 }
 
-/**
- * Apply a font-family to the current selection without execCommand flicker.
- */
 function applyFontFamilyToSelection(editor, family) {
   editor.focus()
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0) return
+
   const range = sel.getRangeAt(0)
 
   if (!range.collapsed) {
@@ -111,51 +110,21 @@ function applyFontFamilyToSelection(editor, family) {
       span.appendChild(fragment)
       range.insertNode(span)
     }
+    const newRange = document.createRange()
+    newRange.selectNodeContents(span)
+    sel.removeAllRanges()
+    sel.addRange(newRange)
   } else {
-    // execCommand fontName is fine for setting the "next typed" font family
-    // since it doesn't visually jump the existing content
-    document.execCommand("fontName", false, family)
+    const span = document.createElement("span")
+    span.style.fontFamily = family
+    span.appendChild(document.createTextNode("\u200B"))
+    range.insertNode(span)
+    const newRange = document.createRange()
+    newRange.setStart(span.firstChild, 1)
+    newRange.collapse(true)
+    sel.removeAllRanges()
+    sel.addRange(newRange)
   }
-}
-
-/**
- * Read the computed font-size of the node at the current caret/selection.
- * Returns a pt value (number) or null.
- */
-function getSelectionFontSizePt() {
-  const sel = window.getSelection()
-  if (!sel || sel.rangeCount === 0) return null
-  const node = sel.getRangeAt(0).startContainer
-  const el = (node.nodeType === 3 ? node.parentElement : node) as Element | null
-  if (!el) return null
-  const computed = window.getComputedStyle(el).fontSize // "16px"
-  const px = parseFloat(computed)
-  if (isNaN(px)) return null
-  return Math.round(px * 0.75) // px → pt  (1pt = 1.333px)
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function RibbonDivider() {
-  return <div className="w-px self-stretch bg-[#c8c8c8] mx-1" />
-}
-
-function RibbonButton({ onClick, active = false, title, disabled = false, children }) {
-  return (
-    <button
-      type="button"
-      title={title}
-      disabled={disabled}
-      onClick={onClick}
-      className={[
-        "flex items-center justify-center rounded px-1.5 py-1 text-[13px] text-[#212121] transition",
-        "hover:bg-[#e5e5e5] active:bg-[#ccc] disabled:opacity-40 disabled:cursor-not-allowed",
-        active ? "bg-[#cde8ff] hover:bg-[#b8daff]" : "",
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  )
 }
 
 function SelectDropdown({ value, onChange, options, className = "" }) {
@@ -226,8 +195,47 @@ function ColorPicker({ value, onChange, label }) {
   )
 }
 
-function ShareModal({ shareUrl, onClose, isShared, setIsShared }) {
+function RibbonButton({ children, onClick, title = "", active = false, disabled = false }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      disabled={disabled}
+      className={[
+        "flex items-center justify-center rounded px-1.5 py-1 text-[13px] text-[#212121] transition",
+        "hover:bg-[#e5e5e5] active:bg-[#ccc] disabled:opacity-40 disabled:cursor-not-allowed",
+        active ? "bg-[#cde8ff] hover:bg-[#b8daff]" : "",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  )
+}
+
+function RibbonDivider() {
+  return <div className="mx-2 my-0 h-6 w-px bg-[#d0d0d0]" />
+}
+
+function ShareModal({ shareUrl, onClose, isShared, setIsShared, assignedTo, setAssignedTo, onAssignUpdated }) {
   const [copied, setCopied] = useState(false)
+  const [users, setUsers] = useState([])
+  const [selectedAssignee, setSelectedAssignee] = useState("")
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/users/simple')
+        const p = await res.json()
+        if (!res.ok) throw new Error(p?.error || 'Failed to load users')
+        if (mounted) setUsers(p.users || [])
+      } catch {
+        if (mounted) setUsers([])
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
+
   const copy = async () => {
     if (!shareUrl) return
     await navigator.clipboard.writeText(shareUrl)
@@ -272,6 +280,40 @@ function ShareModal({ shareUrl, onClose, isShared, setIsShared }) {
               </button>
             </div>
           </div>
+          <div>
+            <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">Assign To</label>
+            <div className="flex gap-2">
+              <select value={selectedAssignee} onChange={e => setSelectedAssignee(e.target.value)} className="flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-[13px] text-zinc-700">
+                <option value="">Choose user...</option>
+                {users.map(u => (
+                  <option key={u._id} value={u._id}>{u.name} — {u.role}</option>
+                ))}
+              </select>
+              <button type="button" onClick={async () => {
+                if (!selectedAssignee) return
+                if (assignedTo.includes(selectedAssignee)) { setSelectedAssignee(""); return }
+                const newAssigned = [...assignedTo, selectedAssignee]
+                setAssignedTo(newAssigned)
+                setSelectedAssignee("")
+                if (typeof onAssignUpdated === "function") await onAssignUpdated(newAssigned)
+              }} className="rounded bg-[#217346] px-3 py-2 text-[13px] text-white hover:bg-[#1a5e38]">Add</button>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {assignedTo.map(aid => {
+                const u = users.find(x => x._id === aid)
+                return (
+                  <div key={aid} className="flex items-center gap-2 rounded bg-zinc-100 px-2 py-1 text-[13px] text-zinc-800">
+                    <span>{u ? `${u.name} — ${u.role}` : aid}</span>
+                    <button type="button" onClick={async () => {
+                      const newAssigned = assignedTo.filter(x => x !== aid)
+                      setAssignedTo(newAssigned)
+                      if (typeof onAssignUpdated === "function") await onAssignUpdated(newAssigned)
+                    }} className="rounded px-1 text-sm text-red-600">×</button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
           <div className="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
             <input
               id="share-toggle"
@@ -307,12 +349,13 @@ function ShareModal({ shareUrl, onClose, isShared, setIsShared }) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export default function DocumentStudio() {
+export default function DocumentStudio({ initialDoc = null, readOnly = false }) {
   const [documents, setDocuments] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [title, setTitle] = useState(emptyDraft.title)
   const [summary, setSummary] = useState(emptyDraft.summary)
   const [isShared, setIsShared] = useState(emptyDraft.isShared)
+  const [assignedTo, setAssignedTo] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -334,6 +377,7 @@ export default function DocumentStudio() {
 
   const editorRef = useRef(null)
   const selectedIdRef = useRef(null) // track without re-render for editor content sync
+  const originalAssignedRef = useRef([])
 
   const activeDocument = documents.find(d => d._id === selectedId) || null
   const shareUrl = origin && activeDocument?.shareToken
@@ -341,6 +385,7 @@ export default function DocumentStudio() {
     : ""
 
   // ── Load documents ────────────────────────────────────────────────────────
+  const register = usePersistentLoader()
 
   const loadDocuments = async () => {
     setLoading(true)
@@ -363,7 +408,18 @@ export default function DocumentStudio() {
     }
   }
 
-  useEffect(() => { loadDocuments() }, [])
+  useEffect(() => {
+    if (initialDoc) {
+      // If an initial document is provided (e.g., from a share page), use it and skip loading
+      setDocuments([initialDoc])
+      applyDocToEditor(initialDoc)
+      setLoading(false)
+    } else {
+      // register the loadDocuments promise so the persistent skeleton remains
+      if (typeof register === "function") register(loadDocuments())
+      else loadDocuments()
+    }
+  }, [])
   useEffect(() => { setOrigin(window.location.origin) }, [])
 
   // ── Apply a document object to all state + editor ────────────────────────
@@ -374,6 +430,18 @@ export default function DocumentStudio() {
     setTitle(doc.title || emptyDraft.title)
     setSummary(doc.summary || "")
     setIsShared(doc.isShared !== false)
+    // normalize assignedTo to an array
+    if (Array.isArray(doc.assignedTo)) {
+      setAssignedTo(doc.assignedTo)
+      originalAssignedRef.current = doc.assignedTo.map(String)
+    }
+    else if (doc.assignedTo) {
+      setAssignedTo([doc.assignedTo])
+      originalAssignedRef.current = [String(doc.assignedTo)]
+    } else {
+      setAssignedTo([])
+      originalAssignedRef.current = []
+    }
     setMessage("")
     // Directly set innerHTML — this is the ONLY place we sync content to the DOM
     if (editorRef.current) {
@@ -387,6 +455,8 @@ export default function DocumentStudio() {
     setTitle(emptyDraft.title)
     setSummary(emptyDraft.summary)
     setIsShared(true)
+    setAssignedTo([])
+    originalAssignedRef.current = []
     setMessage("")
     if (editorRef.current) editorRef.current.innerHTML = ""
   }
@@ -428,6 +498,7 @@ export default function DocumentStudio() {
   // ── Formatting commands ───────────────────────────────────────────────────
 
   const exec = (cmd, value = null) => {
+    if (readOnly) return
     editorRef.current?.focus()
     document.execCommand(cmd, false, value)
     syncToolbarFromSelection()
@@ -463,11 +534,13 @@ export default function DocumentStudio() {
   }
 
   const insertLink = () => {
+    if (readOnly) return
     const url = window.prompt("Enter URL:", "https://")
     if (url) exec("createLink", url)
   }
 
   const insertTable = () => {
+    if (readOnly) return
     let html = '<table style="border-collapse:collapse;width:100%;margin:8px 0;">'
     for (let r = 0; r < 3; r++) {
       html += "<tr>"
@@ -485,6 +558,7 @@ export default function DocumentStudio() {
    * a "page-break-before: always" CSS rule so it prints/exports correctly.
    */
   const insertPageBreak = () => {
+    if (readOnly) return
     const html = `
       <div class="doc-page-break" style="
         page-break-before: always;
@@ -513,12 +587,42 @@ export default function DocumentStudio() {
 
   // ── Save / Delete ─────────────────────────────────────────────────────────
 
-  const saveDocument = async () => {
+  const saveDocument = async (assignedOverride = undefined) => {
     setSaving(true)
     setMessage("")
     try {
       const htmlContent = editorRef.current?.innerHTML || ""
-      const payload = { title, summary, content: htmlContent, isShared }
+      // Sanitize assigned list: only include primitive ids or object {_id|id|email}
+      const rawAssigned = assignedOverride ?? assignedTo
+      const safeAssigned = Array.isArray(rawAssigned)
+        ? rawAssigned
+            .map(a => {
+              if (typeof a === 'string') return a
+              if (a && typeof a === 'object') {
+                if (a._id) return a._id
+                if (a.id) return a.id
+                if (a.email) return a.email
+              }
+              return null
+            })
+            .filter(x => x != null)
+        : []
+
+      // Only include assignedTo if caller explicitly provided it or it changed
+      const includeAssigned = assignedOverride !== undefined || (
+        selectedId ? // existing document
+          JSON.stringify((originalAssignedRef.current || []).sort()) !== JSON.stringify((safeAssigned || []).map(String).sort())
+          : true // new document -> include
+      )
+
+      const payload: {
+        title: string
+        summary: string
+        content: string
+        isShared: boolean
+        assignedTo?: string[]
+      } = { title, summary, content: htmlContent, isShared }
+      if (includeAssigned) payload.assignedTo = safeAssigned
       const res = await fetch(
         selectedId ? `/api/documents/${selectedId}` : "/api/documents",
         { method: selectedId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
@@ -537,6 +641,18 @@ export default function DocumentStudio() {
       setTitle(saved.title || emptyDraft.title)
       setSummary(saved.summary || "")
       setIsShared(saved.isShared !== false)
+      if (Array.isArray(saved.assignedTo)) {
+        setAssignedTo(saved.assignedTo)
+        originalAssignedRef.current = saved.assignedTo.map(String)
+      }
+      else if (saved.assignedTo) {
+        setAssignedTo([saved.assignedTo])
+        originalAssignedRef.current = [String(saved.assignedTo)]
+      }
+      else {
+        setAssignedTo([])
+        originalAssignedRef.current = []
+      }
       setMessage("Document saved.")
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to save document")
@@ -594,7 +710,7 @@ export default function DocumentStudio() {
             <Share2 className="h-3.5 w-3.5" /> Share
           </button>
           <button
-            onClick={saveDocument}
+            onClick={() => saveDocument()}
             disabled={saving}
             className="flex items-center gap-1.5 rounded bg-[#217346] px-3 py-1 text-[13px] text-white hover:bg-[#1a5e38] disabled:opacity-60 transition"
           >
@@ -646,22 +762,23 @@ export default function DocumentStudio() {
                   className="w-36"
                 />
                 {/* Font size: single dropdown to avoid duplicate controls */}
-                <div className="flex items-center">
-                  <SelectDropdown
-                    value={toolbarSize}
-                    onChange={handleFontSizeChange}
-                    options={FONT_SIZES.map(s => String(s))}
-                    className="w-16 text-center"
-                  />
+                <div className="flex items-center gap-2">
+                  {message && (
+                    <span className="rounded bg-white/10 px-2 py-0.5 text-[12px] text-white/80">{message}</span>
+                  )}
+                  {!readOnly && (
+                    <>
+                      <SelectDropdown
+                        value={toolbarSize}
+                        onChange={handleFontSizeChange}
+                        options={FONT_SIZES.map(s => String(s))}
+                        className="w-20"
+                      />
+                      <RibbonButton onClick={handleFontSizeShrink} title="Decrease font size">-</RibbonButton>
+                      <RibbonButton onClick={handleFontSizeGrow} title="Increase font size">+</RibbonButton>
+                    </>
+                  )}
                 </div>
-                <RibbonButton onClick={handleFontSizeGrow} active={false} disabled={false} title="Increase font size">
-                  <span className="text-[12px] font-bold leading-none">A↑</span>
-                </RibbonButton>
-                <RibbonButton onClick={handleFontSizeShrink} active={false} disabled={false} title="Decrease font size">
-                  <span className="text-[12px] font-bold leading-none">A↓</span>
-                </RibbonButton>
-              </div>
-              <div className="flex items-center gap-0.5">
                 <RibbonButton onClick={() => exec("bold")} active={fmtBold} disabled={false} title="Bold (Ctrl+B)">
                   <Bold className="h-4 w-4" />
                 </RibbonButton>
@@ -887,27 +1004,29 @@ export default function DocumentStudio() {
             />
             <div className="flex items-center gap-2 ml-auto">
               {selectedId && (
-                <>
-                  <a
-                    href={`/api/documents/share/${activeDocument?.shareToken}/download`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1 rounded border border-[#d0d0d0] bg-white px-2 py-1 text-[11px] text-[#333] hover:bg-[#f0f0f0] transition"
-                  >
-                    <FileDown className="h-3.5 w-3.5" /> .docx
-                  </a>
-                  <button
-                    onClick={deleteDocument}
-                    disabled={deleting}
-                    className="flex items-center gap-1 rounded border border-[#ffcccc] bg-white px-2 py-1 text-[11px] text-[#c00] hover:bg-[#fff0f0] transition"
-                  >
-                    {deleting
-                      ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                      : <Trash2 className="h-3.5 w-3.5" />}
-                    Delete
-                  </button>
-                </>
-              )}
+                  <>
+                    <a
+                      href={`/api/documents/share/${activeDocument?.shareToken}/download`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 rounded border border-[#d0d0d0] bg-white px-2 py-1 text-[11px] text-[#333] hover:bg-[#f0f0f0] transition"
+                    >
+                      <FileDown className="h-3.5 w-3.5" /> .docx
+                    </a>
+                    {!readOnly && (
+                      <button
+                        onClick={deleteDocument}
+                        disabled={deleting}
+                        className="flex items-center gap-1 rounded border border-[#ffcccc] bg-white px-2 py-1 text-[11px] text-[#c00] hover:bg-[#fff0f0] transition"
+                      >
+                        {deleting
+                          ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                          : <Trash2 className="h-3.5 w-3.5" />}
+                        Delete
+                      </button>
+                    )}
+                  </>
+                )}
             </div>
           </div>
 
@@ -928,23 +1047,23 @@ export default function DocumentStudio() {
                 {/* 1-inch page margins */}
                 <div className="px-24 py-24">
                   <div
-                    ref={editorRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onKeyUp={syncToolbarFromSelection}
-                    onMouseUp={syncToolbarFromSelection}
-                    onSelect={syncToolbarFromSelection}
-                    style={{
-                      minHeight: "864px", // ~9 inches at 96dpi
-                      outline: "none",
-                      lineHeight: 1.6,
-                      fontFamily: "Calibri, Arial, sans-serif",
-                      fontSize: "12pt",
-                      color: "#000000",
-                    }}
-                    className="word-doc-editor"
-                    data-placeholder="Start typing your document here..."
-                  />
+                      ref={editorRef}
+                      contentEditable={!readOnly}
+                      suppressContentEditableWarning
+                      onKeyUp={syncToolbarFromSelection}
+                      onMouseUp={syncToolbarFromSelection}
+                      onSelect={syncToolbarFromSelection}
+                      style={{
+                        minHeight: "864px", // ~9 inches at 96dpi
+                        outline: "none",
+                        lineHeight: 1.6,
+                        fontFamily: "Calibri, Arial, sans-serif",
+                        fontSize: "12pt",
+                        color: "#000000",
+                      }}
+                      className="word-doc-editor"
+                      data-placeholder="Start typing your document here..."
+                    />
                 </div>
               </div>
             </div>
@@ -967,6 +1086,9 @@ export default function DocumentStudio() {
           onClose={() => setShowShareModal(false)}
           isShared={isShared}
           setIsShared={setIsShared}
+          assignedTo={assignedTo}
+          setAssignedTo={setAssignedTo}
+          onAssignUpdated={(newAssigned) => saveDocument(newAssigned)}
         />
       )}
 
@@ -1030,4 +1152,31 @@ export default function DocumentStudio() {
       `}</style>
     </div>
   )
+}
+
+function getSelectionFontSizePt() {
+  try {
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return null
+    const anchorNode = sel.anchorNode
+    if (!anchorNode) return null
+    let element =
+      anchorNode.nodeType === Node.TEXT_NODE
+        ? anchorNode.parentElement
+        : anchorNode instanceof Element
+          ? anchorNode
+          : null
+    while (element) {
+      const cs = window.getComputedStyle(element)
+      const px = parseFloat(cs.fontSize || "")
+      if (!isNaN(px) && px > 0) {
+        // Convert px to pt (1px = 0.75pt at 96dpi)
+        return px * 0.75
+      }
+      element = element.parentElement
+    }
+  } catch (err) {
+    // ignore
+  }
+  return null
 }
